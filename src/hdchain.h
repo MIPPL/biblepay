@@ -1,5 +1,5 @@
 // Copyright (c) 2014-2018 The Dash Core developers
-// Copyright (c) 2017-2019 The DAC Core developers
+// Copyright (c) 2017-2020 The DAC Core developers
 // Distributed under the MIT software license, see the accompanying
 #ifndef DAC_HDCHAIN_H
 #define DAC_HDCHAIN_H

@@ -16,6 +16,7 @@
 #include "bitcoingui.h"
 #include "clientmodel.h"
 #include "guiconstants.h"
+#include "guiutil.h"
 #include "intro.h"
 #include "paymentrequestplus.h"
 #include "guiutil.h"
@@ -163,7 +164,7 @@ HelpMessageDialog::HelpMessageDialog(QWidget *parent, HelpMode helpMode, int iPr
         cursor.insertBlock();
 
         std::string strUsage = HelpMessage(HMM_BITCOIN_QT);
-        const bool showDebug = GetBoolArg("-help-debug", false);
+        const bool showDebug = gArgs.GetBoolArg("-help-debug", false);
         strUsage += HelpMessageGroup(tr("UI Options:").toStdString());
         if (showDebug) {
             strUsage += HelpMessageOpt("-allowselfsignedrootcertificates", strprintf("Allow self signed root certificates (default: %u)", DEFAULT_SELFSIGNED_ROOTCERTS));
@@ -191,7 +192,7 @@ HelpMessageDialog::HelpMessageDialog(QWidget *parent, HelpMode helpMode, int iPr
         QTextCharFormat bold;
         bold.setFontWeight(QFont::Bold);
 
-        Q_FOREACH (const QString &line, coreOptions.split("\n")) {
+        for (const QString &line : coreOptions.split("\n")) {
             if (line.startsWith("  -"))
             {
                 cursor.currentTable()->appendRows(1);
@@ -213,7 +214,6 @@ HelpMessageDialog::HelpMessageDialog(QWidget *parent, HelpMode helpMode, int iPr
 
         ui->helpMessage->moveCursor(QTextCursor::Start);
         ui->scrollArea->setVisible(false);
-        ui->aboutLogo->setVisible(false);
     } else if (helpMode == pshelp) {
         setWindowTitle(tr("PrivateSend information"));
 
@@ -238,7 +238,7 @@ Your wallet pays that denomination directly to itself, but in a different addres
 <li>In order to fully obscure your funds, your wallet must repeat this process a number of times with each denomination. \
 Each time the process is completed, it's called a \"round.\" Each round of PrivateSend makes it exponentially more difficult to determine where your funds originated.</li> \
 <li>This mixing process happens in the background without any intervention on your part. When you wish to make a transaction, \
-your funds will already be anonymized. No additional waiting is required.</li> \
+your funds will already be mixed. No additional waiting is required.</li> \
 </ol> <hr>\
 <b>IMPORTANT:</b> Your wallet only contains 1000 of these \"change addresses.\" Every time a mixing event happens, up to 9 of your addresses are used up. \
 This means those 1000 addresses last for about 100 mixing events. When 900 of them are used, your wallet must create more addresses. \
@@ -248,12 +248,7 @@ For more information, see the <a href=\"https://docs.dash.org/en/latest/wallets/
         ));
         ui->aboutMessage->setWordWrap(true);
         ui->helpMessage->setVisible(false);
-        ui->aboutLogo->setVisible(false);
     }
-    // Theme dependent Gfx in About popup
-    QString helpMessageGfx = ":/images/" + GUIUtil::getThemeName() + "/about";
-    QPixmap pixmap = QPixmap(helpMessageGfx);
-    ui->aboutLogo->setPixmap(pixmap);
 }
 
 HelpMessageDialog::~HelpMessageDialog()
@@ -382,6 +377,11 @@ void HelpMessageDialog::on_comboChapterClicked(int iClick)
 ShutdownWindow::ShutdownWindow(QWidget *parent, Qt::WindowFlags f):
     QWidget(parent, f)
 {
+    setObjectName("ShutdownWindow");
+
+    /* Open CSS when configured */
+    this->setStyleSheet(GUIUtil::loadStyleSheet());
+
     QVBoxLayout *layout = new QVBoxLayout();
     layout->addWidget(new QLabel(
         tr("%1 is shutting down...").arg(tr(PACKAGE_NAME)) + "<br /><br />" +

@@ -12,25 +12,13 @@
 * fee_estimates.dat: stores statistics used to estimate minimum transaction fees and priorities required for confirmation; since 0.10.0
 * mempool.dat: dump of the mempool's transactions; since 0.14.0.
 * governance.dat: stores data for governance obgects
-* masternode.conf: contains configuration settings for remote masternodes
+* llmq/*: quorum signatures database
+* mempool.dat: dump of the mempool's transactions
 * mncache.dat: stores data for masternode list
 * mnpayments.dat: stores data for masternode payments
 * netfulfilled.dat: stores data about recently made network requests
 * peers.dat: peer IP address database (custom format); since 0.7.0
 * wallet.dat: personal wallet (BDB) with keys and transactions
-* .cookie: session RPC authentication cookie (written at start when cookie authentication is used, deleted on shutdown): since 0.12.0
-* onion_private_key: cached Tor hidden service private key for `-listenonion`: since 0.12.0
-
-Only used in pre-0.8.0
----------------------
-* blktree/*; block chain index (LevelDB); since pre-0.8, replaced by blocks/index/* in 0.8.0
-* coins/*; unspent transaction output database (LevelDB); since pre-0.8, replaced by chainstate/* in 0.8.0
-
-Only used before 0.8.0
----------------------
-* blkindex.dat: block chain index database (BDB); replaced by {chainstate/*,blocks/index/*,blocks/rev000??.dat} in 0.8.0
-* blk000?.dat: block data (custom, 2 GiB per file); replaced by blocks/blk000??.dat in 0.8.0
-
-Only used before 0.7.0
----------------------
-* addr.dat: peer IP address database (BDB); replaced by peers.dat in 0.7.0
+* .cookie: session RPC authentication cookie (written at start when cookie authentication is used, deleted on shutdown)
+* onion_private_key: cached Tor hidden service private key for `-listenonion`
+* guisettings.ini.bak: backup of former GUI settings after `-resetguisettings` is used

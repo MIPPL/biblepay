@@ -10,8 +10,8 @@ AM_CXXFLAGS = $(HARDENED_CXXFLAGS) $(ERROR_CXXFLAGS)
 AM_CPPFLAGS = $(HARDENED_CPPFLAGS)
 EXTRA_LIBRARIES =
 
-if ENABLE_STACKTRACES
-if STACKTRACE_WRAPPED_CXX_ABI
+if ENABLE_CRASH_HOOKS
+if CRASH_HOOKS_WRAPPED_CXX_ABI
 # Wrap internal C++ ABI's so that we can attach stacktraces to exceptions
 LDFLAGS_WRAP_EXCEPTIONS = -Wl,-wrap,__cxa_allocate_exception -Wl,-wrap,__cxa_free_exception
 if TARGET_WINDOWS
@@ -20,17 +20,12 @@ else
 LDFLAGS_WRAP_EXCEPTIONS += -Wl,-wrap,__assert_fail
 endif
 endif
-
-if RDYNAMIC_SUPPORTED
-# This gives better stacktraces
-AM_CXXFLAGS += -rdynamic
 endif
 
 if TARGET_WINDOWS
 BACKTRACE_LIB = -ldbghelp -lbacktrace
 else
 BACKTRACE_LIB = -lbacktrace
-endif
 endif
 
 if EMBEDDED_UNIVALUE
@@ -74,6 +69,20 @@ if ENABLE_WALLET
 LIBBITCOIN_WALLET=libbiblepay_wallet.a
 endif
 
+LIBBITCOIN_CRYPTO= $(LIBBITCOIN_CRYPTO_BASE)
+if ENABLE_SSE41
+LIBBITCOIN_CRYPTO_SSE41 = crypto/libdash_crypto_sse41.a
+LIBBITCOIN_CRYPTO += $(LIBBITCOIN_CRYPTO_SSE41)
+endif
+if ENABLE_AVX2
+LIBBITCOIN_CRYPTO_AVX2 = crypto/libdash_crypto_avx2.a
+LIBBITCOIN_CRYPTO += $(LIBBITCOIN_CRYPTO_AVX2)
+endif
+if ENABLE_SHANI
+LIBBITCOIN_CRYPTO_SHANI = crypto/libdash_crypto_shani.a
+LIBBITCOIN_CRYPTO += $(LIBBITCOIN_CRYPTO_SHANI)
+endif
+
 $(LIBSECP256K1): $(wildcard secp256k1/src/*) $(wildcard secp256k1/include/*)
 	$(AM_V_at)$(MAKE) $(AM_MAKEFLAGS) -C $(@D) $(@F)
 
@@ -92,6 +101,7 @@ EXTRA_LIBRARIES += \
 lib_LTLIBRARIES = $(LIBBITCOINCONSENSUS)
 
 bin_PROGRAMS =
+noinst_PROGRAMS =
 TESTS =
 BENCHMARKS =
 
@@ -107,11 +117,9 @@ endif
 # biblepay core #
 BITCOIN_CORE_H = \
   addrdb.h \
-  activemasternode.h \
   addressindex.h \
   spentindex.h \
   addrman.h \
-  alert.h \
   base58.h \
   batchedlogger.h \
   bip39.h \
@@ -134,6 +142,7 @@ BITCOIN_CORE_H = \
   compat/sanity.h \
   compressor.h \
   consensus/consensus.h \
+  consensus/tx_verify.h \
   core_io.h \
   core_memusage.h \
   cuckoocache.h \
@@ -147,20 +156,21 @@ BITCOIN_CORE_H = \
   evo/simplifiedmns.h \
   randomx_bbp.h \
   evo/specialtx.h \
-  privatesend.h \
-  privatesend-client.h \
-  privatesend-server.h \
-  privatesend-util.h \
+  privatesend/privatesend.h \
+  privatesend/privatesend-client.h \
+  privatesend/privatesend-server.h \
+  privatesend/privatesend-util.h \
   dsnotificationinterface.h \
-  governance.h \
-  governance-classes.h \
-  governance-exceptions.h \
-  governance-object.h \
-  governance-validators.h \
-  governance-vote.h \
-  governance-votedb.h \
+  governance/governance.h \
+  governance/governance-classes.h \
+  governance/governance-exceptions.h \
+  governance/governance-object.h \
+  governance/governance-validators.h \
+  governance/governance-vote.h \
+  governance/governance-votedb.h \
   flat-database.h \
   hdchain.h \
+  fs.h \
   httprpc.h \
   httpserver.h \
   indirectmap.h \
@@ -175,7 +185,6 @@ BITCOIN_CORE_H = \
   smartcontract-client.h \
   smartcontract-server.h \
   init.h \
-  instantx.h \
   key.h \
   keepass.h \
   keystore.h \
@@ -194,10 +203,11 @@ BITCOIN_CORE_H = \
   llmq/quorums_signing.h \
   llmq/quorums_signing_shares.h \
   llmq/quorums_utils.h \
-  masternode-meta.h \
-  masternode-payments.h \
-  masternode-sync.h \
-  masternode-utils.h \
+  masternode/activemasternode.h \
+  masternode/masternode-meta.h \
+  masternode/masternode-payments.h \
+  masternode/masternode-sync.h \
+  masternode/masternode-utils.h \
   memusage.h \
   merkleblock.h \
   messagesigner.h \
@@ -209,13 +219,17 @@ BITCOIN_CORE_H = \
   netfulfilledman.h \
   netmessagemaker.h \
   noui.h \
+  policy/feerate.h \
   policy/fees.h \
   policy/policy.h \
   pow.h \
   protocol.h \
   random.h \
+  reverse_iterator.h \
   reverselock.h \
+  rpc/blockchain.h \
   rpc/client.h \
+  rpc/mining.h \
   rpc/protocol.h \
   rpc/server.h \
   rpc/register.h \
@@ -274,15 +288,14 @@ libbiblepay_util_a-clientversion.$(OBJEXT): obj/build.h
 libbiblepay_server_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES) $(MINIUPNPC_CPPFLAGS) $(EVENT_CFLAGS) $(EVENT_PTHREADS_CFLAGS)
 libbiblepay_server_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbiblepay_server_a_SOURCES = \
-  activemasternode.cpp \
-  addrman.cpp \
   addrdb.cpp \
-  alert.cpp \
+  addrman.cpp \
   batchedlogger.cpp \
   bloom.cpp \
   blockencodings.cpp \
   chain.cpp \
   checkpoints.cpp \
+  consensus/tx_verify.cpp \
   dsnotificationinterface.cpp \
   evo/cbtx.cpp \
   evo/deterministicmns.cpp \
@@ -304,14 +317,13 @@ libbiblepay_server_a_SOURCES = \
   smartcontract-client.cpp \
   smartcontract-server.cpp \
   init.cpp \
-  instantx.cpp \
   dbwrapper.cpp \
-  governance.cpp \
-  governance-classes.cpp \
-  governance-object.cpp \
-  governance-validators.cpp \
-  governance-vote.cpp \
-  governance-votedb.cpp \
+  governance/governance.cpp \
+  governance/governance-classes.cpp \
+  governance/governance-object.cpp \
+  governance/governance-validators.cpp \
+  governance/governance-vote.cpp \
+  governance/governance-votedb.cpp \
   llmq/quorums.cpp \
   llmq/quorums_blockprocessor.cpp \
   llmq/quorums_commitment.cpp \
@@ -325,10 +337,11 @@ libbiblepay_server_a_SOURCES = \
   llmq/quorums_signing.cpp \
   llmq/quorums_signing_shares.cpp \
   llmq/quorums_utils.cpp \
-  masternode-meta.cpp \
-  masternode-payments.cpp \
-  masternode-sync.cpp \
-  masternode-utils.cpp \
+  masternode/activemasternode.cpp \
+  masternode/masternode-meta.cpp \
+  masternode/masternode-payments.cpp \
+  masternode/masternode-sync.cpp \
+  masternode/masternode-utils.cpp \
   merkleblock.cpp \
   messagesigner.cpp \
   miner.cpp \
@@ -339,9 +352,9 @@ libbiblepay_server_a_SOURCES = \
   policy/fees.cpp \
   policy/policy.cpp \
   pow.cpp \
-  privatesend.cpp \
-  privatesend-server.cpp \
   randomx_bbp.cpp \
+  privatesend/privatesend.cpp \
+  privatesend/privatesend-server.cpp \
   rest.cpp \
   rpc/blockchain.cpp \
   rpc/masternode.cpp \
@@ -353,9 +366,9 @@ libbiblepay_server_a_SOURCES = \
   rpc/rpcevo.cpp \
   rpc/rpcquorums.cpp \
   rpc/server.cpp \
+  rpc/privatesend.cpp \
   script/sigcache.cpp \
   script/ismine.cpp \
-  sendalert.cpp \
   spork.cpp \
   timedata.cpp \
   torcontrol.cpp \
@@ -383,8 +396,8 @@ libbiblepay_wallet_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
 libbiblepay_wallet_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbiblepay_wallet_a_SOURCES = \
   keepass.cpp \
-  privatesend-client.cpp \
-  privatesend-util.cpp \
+  privatesend/privatesend-client.cpp \
+  privatesend/privatesend-util.cpp \
   wallet/crypter.cpp \
   wallet/db.cpp \
   wallet/rpcdump.cpp \
@@ -399,11 +412,17 @@ crypto_libbiblepay_crypto_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS) $(PIC_FLAGS)
 crypto_libbiblepay_crypto_a_SOURCES = \
   crypto/aes.cpp \
   crypto/aes.h \
+  crypto/chacha_poly_aead.h \
+  crypto/chacha_poly_aead.cpp \
+  crypto/chacha20.h \
+  crypto/chacha20.cpp \
   crypto/common.h \
   crypto/hmac_sha256.cpp \
   crypto/hmac_sha256.h \
   crypto/hmac_sha512.cpp \
   crypto/hmac_sha512.h \
+  crypto/poly1305.h \
+  crypto/poly1305.cpp \
   crypto/ripemd160.cpp \
   crypto/aes_helper.c \
   crypto/ripemd160.h \
@@ -413,6 +432,22 @@ crypto_libbiblepay_crypto_a_SOURCES = \
   crypto/sha256.h \
   crypto/sha512.cpp \
   crypto/sha512.h
+
+if USE_ASM
+crypto_libdash_crypto_base_a_SOURCES += crypto/sha256_sse4.cpp
+endif
+
+crypto_libdash_crypto_sse41_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+crypto_libdash_crypto_sse41_a_CPPFLAGS = $(AM_CPPFLAGS)
+crypto_libdash_crypto_sse41_a_CXXFLAGS += $(SSE41_CXXFLAGS)
+crypto_libdash_crypto_sse41_a_CPPFLAGS += -DENABLE_SSE41
+crypto_libdash_crypto_sse41_a_SOURCES = crypto/sha256_sse41.cpp
+
+crypto_libdash_crypto_avx2_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+crypto_libdash_crypto_avx2_a_CPPFLAGS = $(AM_CPPFLAGS)
+crypto_libdash_crypto_avx2_a_CXXFLAGS += $(AVX2_CXXFLAGS)
+crypto_libdash_crypto_avx2_a_CPPFLAGS += -DENABLE_AVX2
+crypto_libdash_crypto_avx2_a_SOURCES = crypto/sha256_avx2.cpp
 
 # x11
 crypto_libbiblepay_crypto_a_SOURCES += \
@@ -443,6 +478,13 @@ crypto_libbiblepay_crypto_a_SOURCES += \
   crypto/sph_types.h 
 
 #  crypto/RandomX/src/randomx.h
+
+crypto_libbiblepay_crypto_shani_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+crypto_libbiblepay_crypto_shani_a_CPPFLAGS = $(AM_CPPFLAGS)
+crypto_libbiblepay_crypto_shani_a_CXXFLAGS += $(SHANI_CXXFLAGS)
+crypto_libbiblepay_crypto_shani_a_CPPFLAGS += -DENABLE_SHANI
+crypto_libbiblepay_crypto_shani_a_SOURCES = crypto/sha256_shani.cpp
+
 # consensus: shared between all executables that validate any consensus rules.
 libbiblepay_consensus_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
 libbiblepay_consensus_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
@@ -487,7 +529,6 @@ libbiblepay_consensus_a_SOURCES = \
 libbiblepay_common_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
 libbiblepay_common_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libbiblepay_common_a_SOURCES = \
-  amount.cpp \
   base58.cpp \
   bip39.cpp \
   chainparams.cpp \
@@ -500,6 +541,7 @@ libbiblepay_common_a_SOURCES = \
   keystore.cpp \
   netaddress.cpp \
   netbase.cpp \
+  policy/feerate.cpp \
   protocol.cpp \
   saltedhasher.cpp \
   scheduler.cpp \
@@ -525,6 +567,7 @@ libbiblepay_util_a_SOURCES = \
   compat/glibc_sanity.cpp \
   compat/glibcxx_sanity.cpp \
   compat/strnlen.cpp \
+  fs.cpp \
   random.cpp \
   rpc/protocol.cpp \
   stacktraces.cpp \
@@ -572,6 +615,7 @@ biblepayd_LDADD = \
   $(LIBBITCOIN_CONSENSUS) \
   $(LIBBITCOIN_CRYPTO) \
   $(LIBLEVELDB) \
+  $(LIBLEVELDB_SSE42) \
   $(LIBMEMENV) \
   $(LIBSECP256K1) 
   
@@ -621,7 +665,7 @@ biblepay_tx_LDADD += $(BACKTRACE_LIB) $(BOOST_LIBS) $(CRYPTO_LIBS) $(BLS_LIBS)
 # biblepayconsensus library #
 if BUILD_BITCOIN_LIBS
 include_HEADERS = script/biblepayconsensus.h
-libbiblepayconsensus_la_SOURCES = $(crypto_libbiblepay_crypto_a_SOURCES) $(libbiblepay_consensus_a_SOURCES)
+libbiblepayconsensus_la_SOURCES = support/cleanse.cpp $(crypto_libbiblepay_crypto_a_SOURCES) $(libbiblepay_consensus_a_SOURCES)
 
 if GLIBC_BACK_COMPAT
   libbiblepayconsensus_la_SOURCES += compat/glibc_compat.cpp
@@ -671,12 +715,14 @@ config/stamp-h1: $(top_srcdir)/$(subdir)/config/coin-config.h.in $(top_builddir)
 $(top_srcdir)/$(subdir)/config/coin-config.h.in:  $(am__configure_deps)
 	$(AM_V_at)$(MAKE) -C $(top_srcdir) $(subdir)/config/coin-config.h.in
 
+
 clean-local:
 	-$(MAKE) -C secp256k1 clean
 	-$(MAKE) -C univalue clean
 	-rm -f leveldb/*/*.gcda leveldb/*/*.gcno leveldb/helpers/memenv/*.gcda leveldb/helpers/memenv/*.gcno
 	-rm -f config.h
 	-rm -rf test/__pycache__
+	-rm -rf *.dSYM test/*.dSYM bench/*.dSYM qt/*.dSYM qt/test/*.dSYM
 
 .rc.o:
 	@test -f $(WINDRES)
@@ -698,6 +744,10 @@ if HARDEN
 	@echo "Checking binary security..."
 	$(AM_V_at) READELF=$(READELF) OBJDUMP=$(OBJDUMP) $(top_srcdir)/contrib/devtools/security-check.py < $(bin_PROGRAMS)
 endif
+
+
+osx_debug: $(bin_PROGRAMS)
+	for i in $(bin_PROGRAMS); do mkdir -p $$i.dSYM/Contents/Resources/DWARF && $(DSYMUTIL_FLAT) -o $$i.dSYM/Contents/Resources/DWARF/$$(basename $$i) $$i &> /dev/null ; done
 
 %.pb.cc %.pb.h: %.proto
 	@test -f $(PROTOC)

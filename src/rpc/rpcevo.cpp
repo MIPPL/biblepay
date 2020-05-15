@@ -1,5 +1,5 @@
-// Copyright (c) 2018-2019 The Dash Core developers
-// Copyright (c) 2017-2019 The DAC Core developers
+// Copyright (c) 2018-2020 The Dash Core developers
+// Copyright (c) 2017-2020 The DAC Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -76,9 +76,14 @@ std::string GetHelpString(int nParamNum, std::string strParamName)
             "                              Only allowed when the ProRegTx had a non-zero operatorReward value.\n"
             "                              If set to an empty string, the currently active payout address is reused.\n"
         },
-        {"operatorPubKey",
+        {"operatorPubKey_register",
             "%d. \"operatorPubKey\"           (string, required) The operator BLS public key. The private key does not have to be known.\n"
             "                              It has to match the private key which is later used when operating the masternode.\n"
+        },
+        {"operatorPubKey_update",
+            "%d. \"operatorPubKey\"           (string, required) The operator BLS public key. The private key does not have to be known.\n"
+            "                              It has to match the private key which is later used when operating the masternode.\n"
+            "                              If set to an empty string, the currently active operator BLS public key is reused.\n"
         },
         {"operatorReward",
             "%d. \"operatorReward\"           (numeric, required) The fraction in %% to share with the operator. The value must be\n"
@@ -92,16 +97,25 @@ std::string GetHelpString(int nParamNum, std::string strParamName)
         {"payoutAddress",
             "%d. \"payoutAddress\"            (string, required) The address to use for masternode reward payments.\n"
         },
+        {"payoutAddress_update",
+            "%d. \"payoutAddress\"            (string, required) The dash address to use for masternode reward payments.\n"
+            "                              If set to an empty string, the currently active payout address is reused.\n"
+        },
         {"proTxHash",
             "%d. \"proTxHash\"                (string, required) The hash of the initial ProRegTx.\n"
         },
         {"reason",
             "%d. reason                     (numeric, optional) The reason for masternode service revocation.\n"
         },
-        {"votingAddress",
+        {"votingAddress_register",
             "%d. \"votingAddress\"            (string, required) The voting key address. The private key does not have to be known by your wallet.\n"
             "                              It has to match the private key which is later used when voting on proposals.\n"
             "                              If set to an empty string, ownerAddress will be used.\n"
+        },
+        {"votingAddress_update",
+            "%d. \"votingAddress\"            (string, required) The voting key address. The private key does not have to be known by your wallet.\n"
+            "                              It has to match the private key which is later used when voting on proposals.\n"
+            "                              If set to an empty string, the currently active voting key address is reused.\n"
         },
     };
 
@@ -171,7 +185,7 @@ static CBLSSecretKey ParseBLSSecretKey(const std::string& hexKey, const std::str
 template<typename SpecialTxPayload>
 static void FundSpecialTx(CWallet* pwallet, CMutableTransaction& tx, const SpecialTxPayload& payload, const CTxDestination& fundDest)
 {
-    assert(pwallet != NULL);
+    assert(pwallet != nullptr);
     LOCK2(cs_main, pwallet->cs_wallet);
 
     CTxDestination nodest = CNoDestination();
@@ -222,7 +236,7 @@ static void FundSpecialTx(CWallet* pwallet, CMutableTransaction& tx, const Speci
     int nChangePos = -1;
     std::string strFailReason;
 
-    if (!pwallet->CreateTransaction(vecSend, wtx, reservekey, nFee, nChangePos, strFailReason, &coinControl, false, ALL_COINS, false, tx.vExtraPayload.size())) {
+    if (!pwallet->CreateTransaction(vecSend, wtx, reservekey, nFee, nChangePos, strFailReason, coinControl, false, tx.vExtraPayload.size())) {
         throw JSONRPCError(RPC_INTERNAL_ERROR, strFailReason);
     }
 
@@ -314,10 +328,10 @@ void protx_register_fund_help(CWallet* const pwallet)
             + GetHelpString(1, "collateralAddress")
             + GetHelpString(2, "ipAndPort")
             + GetHelpString(3, "ownerAddress")
-            + GetHelpString(4, "operatorPubKey")
-            + GetHelpString(5, "votingAddress")
+            + GetHelpString(4, "operatorPubKey_register")
+            + GetHelpString(5, "votingAddress_register")
             + GetHelpString(6, "operatorReward")
-            + GetHelpString(7, "payoutAddress")
+            + GetHelpString(7, "payoutAddress_register")
             + GetHelpString(8, "fundAddress") +
             "\nResult:\n"
             "\"txid\"                        (string) The transaction id.\n"
@@ -339,10 +353,10 @@ void protx_register_help(CWallet* const pwallet)
             + GetHelpString(2, "collateralIndex")
             + GetHelpString(3, "ipAndPort")
             + GetHelpString(4, "ownerAddress")
-            + GetHelpString(5, "operatorPubKey")
-            + GetHelpString(6, "votingAddress")
+            + GetHelpString(5, "operatorPubKey_register")
+            + GetHelpString(6, "votingAddress_register")
             + GetHelpString(7, "operatorReward")
-            + GetHelpString(8, "payoutAddress")
+            + GetHelpString(8, "payoutAddress_register")
             + GetHelpString(9, "feeSourceAddress") +
             "\nResult:\n"
             "\"txid\"                        (string) The transaction id.\n"
@@ -363,10 +377,10 @@ void protx_register_prepare_help()
             + GetHelpString(2, "collateralIndex")
             + GetHelpString(3, "ipAndPort")
             + GetHelpString(4, "ownerAddress")
-            + GetHelpString(5, "operatorPubKey")
-            + GetHelpString(6, "votingAddress")
+            + GetHelpString(5, "operatorPubKey_register")
+            + GetHelpString(6, "votingAddress_register")
             + GetHelpString(7, "operatorReward")
-            + GetHelpString(8, "payoutAddress")
+            + GetHelpString(8, "payoutAddress_register")
             + GetHelpString(9, "feeSourceAddress") +
             "\nResult:\n"
             "{                             (json object)\n"
@@ -759,9 +773,9 @@ void protx_update_registrar_help(CWallet* const pwallet)
             + HelpRequiringPassphrase(pwallet) + "\n"
             "\nArguments:\n"
             + GetHelpString(1, "proTxHash")
-            + GetHelpString(2, "operatorPubKey")
-            + GetHelpString(3, "votingAddress")
-            + GetHelpString(4, "payoutAddress")
+            + GetHelpString(2, "operatorPubKey_update")
+            + GetHelpString(3, "votingAddress_update")
+            + GetHelpString(4, "payoutAddress_update")
             + GetHelpString(5, "feeSourceAddress") +
             "\nResult:\n"
             "\"txid\"                        (string) The transaction id.\n"
@@ -801,11 +815,16 @@ UniValue protx_update_registrar(const JSONRPCRequest& request)
         ptx.keyIDVoting = ParsePubKeyIDFromAddress(request.params[3].get_str(), "voting address");
     }
 
-    CBitcoinAddress payoutAddress(request.params[4].get_str());
-    if (!payoutAddress.IsValid()) {
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, strprintf("invalid payout address: %s", request.params[4].get_str()));
+    CTxDestination payoutDest;
+    ExtractDestination(ptx.scriptPayout, payoutDest);
+    if (request.params[4].get_str() != "") {
+        CBitcoinAddress payoutAddress(request.params[4].get_str());
+        if (!payoutAddress.IsValid()) {
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, strprintf("invalid payout address: %s", request.params[4].get_str()));
+        }
+        payoutDest = payoutAddress.Get();
+        ptx.scriptPayout = GetScriptForDestination(payoutDest);
     }
-    ptx.scriptPayout = GetScriptForDestination(payoutAddress.Get());
 
     CKey keyOwner;
     if (!pwallet->GetKey(dmn->pdmnState->keyIDOwner, keyOwner)) {
@@ -819,14 +838,15 @@ UniValue protx_update_registrar(const JSONRPCRequest& request)
     // make sure we get anough fees added
     ptx.vchSig.resize(65);
 
-    CBitcoinAddress feeSourceAddress = payoutAddress;
+    CTxDestination feeSourceDest = payoutDest;
     if (request.params.size() > 5) {
-        feeSourceAddress = CBitcoinAddress(request.params[5].get_str());
+        CBitcoinAddress feeSourceAddress = CBitcoinAddress(request.params[5].get_str());
         if (!feeSourceAddress.IsValid())
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, std::string("Invalid address: ") + request.params[5].get_str());
+        feeSourceDest = feeSourceAddress.Get();
     }
 
-    FundSpecialTx(pwallet, tx, ptx, feeSourceAddress.Get());
+    FundSpecialTx(pwallet, tx, ptx, feeSourceDest);
     SignSpecialTxPayloadByHash(tx, ptx, keyOwner);
     SetTxPayload(tx, ptx);
 
@@ -1031,7 +1051,7 @@ UniValue protx_list(const JSONRPCRequest& request)
 #ifdef ENABLE_WALLET
         LOCK2(cs_main, pwallet->cs_wallet);
 
-        if (request.params.size() > 3) {
+        if (request.params.size() > 4) {
             protx_list_help();
         }
 

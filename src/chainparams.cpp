@@ -1,6 +1,6 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2014-2019 The DAC Core developers
+// Copyright (c) 2014-2020 The DAC Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -15,8 +15,6 @@
 #include "arith_uint256.h"
 
 #include <assert.h>
-
-#include <boost/assign/list_of.hpp>
 
 #include "chainparamsseeds.h"
 
@@ -81,6 +79,43 @@ static CBlock CreateGenesisBlock(uint32_t nTime, uint32_t nNonce, uint32_t nBits
  	const char* pszTimestamp = "Pray always that ye may be accounted worthy to stand before the Son of Man.";
     const CScript genesisOutputScript = CScript() << ParseHex("040184710fa689ad5023690c80f3a49c8f13f8d45b8c857fbcbc8bc4a8e4d3eb4b10f4d4604fa08dce601aaf0f470216fe1b51850b4acf21b179c45070ac7b03a9") << OP_CHECKSIG;
     return CreateGenesisBlock(pszTimestamp, genesisOutputScript, nTime, nNonce, nBits, nVersion, genesisReward);
+}
+
+
+void CChainParams::UpdateVersionBitsParameters(Consensus::DeploymentPos d, int64_t nStartTime, int64_t nTimeout, int64_t nWindowSize, int64_t nThreshold)
+{
+    consensus.vDeployments[d].nStartTime = nStartTime;
+    consensus.vDeployments[d].nTimeout = nTimeout;
+    if (nWindowSize != -1) {
+            consensus.vDeployments[d].nWindowSize = nWindowSize;
+    }
+    if (nThreshold != -1) {
+            consensus.vDeployments[d].nThreshold = nThreshold;
+    }
+}
+
+void CChainParams::UpdateDIP3Parameters(int nActivationHeight, int nEnforcementHeight)
+{
+    consensus.DIP0003Height = nActivationHeight;
+    consensus.DIP0003EnforcementHeight = nEnforcementHeight;
+}
+
+void CChainParams::UpdateBudgetParameters(int nMasternodePaymentsStartBlock, int nBudgetPaymentsStartBlock, int nSuperblockStartBlock)
+{
+    consensus.nMasternodePaymentsStartBlock = nMasternodePaymentsStartBlock;
+    consensus.nBudgetPaymentsStartBlock = nBudgetPaymentsStartBlock;
+    consensus.nSuperblockStartBlock = nSuperblockStartBlock;
+}
+
+void CChainParams::UpdateSubsidyAndDiffParams(int nMinimumDifficultyBlocks, int nHighSubsidyBlocks, int nHighSubsidyFactor)
+{
+    consensus.nMinimumDifficultyBlocks = nMinimumDifficultyBlocks;
+    consensus.nHighSubsidyBlocks = nHighSubsidyBlocks;
+    consensus.nHighSubsidyFactor = nHighSubsidyFactor;
+}
+
+void CChainParams::UpdateLLMQChainLocks(Consensus::LLMQType llmqType) {
+    consensus.llmqTypeChainLocks = llmqType;
 }
 
 static CBlock FindDevNetGenesisBlock(const Consensus::Params& params, const CBlock &prevBlock, const CAmount& reward)
@@ -176,7 +211,7 @@ static Consensus::LLMQParams llmq400_85 = {
         .dkgMiningWindowEnd = 48, // give it a larger mining window to make sure it is mined
         .dkgBadVotesThreshold = 100,
 
-        .signingActiveQuorumCount = 4, // two days worth of LLMQs
+        .signingActiveQuorumCount = 4, // four days worth of LLMQs
 
         .keepOldConnections = 5,
 };
@@ -302,7 +337,7 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_DIP0008].nThreshold = 3226; // 80% of 4032
 
         // The best chain should have at least this much work.
-        consensus.nMinimumChainWork = uint256S("0x0000000000000000000000000000000000000000000000000000806e93acd1bb"); 
+        consensus.nMinimumChainWork = uint256S("0x0000000000000000000000000000000000000000000000000000806e93acd1bb");
 
         // By default assume that the signatures in ancestors of this block are valid.
         consensus.defaultAssumeValid = uint256S("0x3b4431310395638c0ed65b40ede4b110d8da70fcc0c2ed4a729fb8e4d78b4452"); 
@@ -316,6 +351,7 @@ public:
         pchMessageStart[1] = 0x0c;
         pchMessageStart[2] = 0x6b;
         pchMessageStart[3] = 0xbd;
+
         vAlertPubKey = ParseHex("0x0432cb0fcd551eb206e80fa59cc7fd4038923ef3416f3e132637b8e9a4bcd2f8c9e6c4ee9f01c6f3cea7fb5d85b65b7c18ba30e6c133242bf0de488dd839c36001");
         nDefaultPort = 40000;
         nPruneAfterHeight = 150000;
@@ -346,11 +382,16 @@ public:
         // long living quorum params
 	    consensus.llmqs[Consensus::LLMQ_5_60] = llmq5_60;
         consensus.llmqs[Consensus::LLMQ_50_60] = llmq50_60;
-
 		consensus.llmqChainLocks = Consensus::LLMQ_50_60;
         consensus.llmqForInstantSend = Consensus::LLMQ_50_60;
 		
         fMiningRequiresPeers = true;
+
+        consensus.llmqs[Consensus::LLMQ_400_60] = llmq400_60;
+        consensus.llmqs[Consensus::LLMQ_400_85] = llmq400_85;
+        consensus.llmqTypeChainLocks = Consensus::LLMQ_400_60;
+        consensus.llmqTypeInstantSend = Consensus::LLMQ_50_60;
+
         fDefaultConsistencyChecks = false;
         fRequireStandard = true;
         fRequireRoutableExternalIP = true;
@@ -388,7 +429,6 @@ public:
         };
     }
 };
-static CMainParams mainParams;
 
 /**
  * Testnet (v3)
@@ -502,7 +542,7 @@ public:
         consensus.nMinimumChainWork = uint256S("0x000000000000000000000000000000000000000000000000000000000000000"); // 4000
 
         // By default assume that the signatures in ancestors of this block are valid.
-        consensus.defaultAssumeValid = uint256S("0x0000000005ae4db9746d6cad8e0ccebdef1e05afec9c40809f31457fdaf7d843"); // 95930
+        consensus.defaultAssumeValid = uint256S("0x000002bbe0f404f22f0aff8032e2a87cef6a32f0840e9199aa0b79ba3870b33c"); // 260000
 
         pchMessageStart[0] = 0xce;
         pchMessageStart[1] = 0xe2;
@@ -543,11 +583,15 @@ public:
         // long living quorum params
 	    consensus.llmqs[Consensus::LLMQ_5_60] = llmq5_60;
         consensus.llmqs[Consensus::LLMQ_50_60] = llmq50_60;
-
 		consensus.llmqChainLocks = Consensus::LLMQ_5_60;
         consensus.llmqForInstantSend = Consensus::LLMQ_5_60;
 
         fMiningRequiresPeers = false;
+        consensus.llmqs[Consensus::LLMQ_400_60] = llmq400_60;
+        consensus.llmqs[Consensus::LLMQ_400_85] = llmq400_85;
+        consensus.llmqTypeChainLocks = Consensus::LLMQ_50_60;
+        consensus.llmqTypeInstantSend = Consensus::LLMQ_50_60;
+
         fDefaultConsistencyChecks = false;
         fRequireStandard = false;
         fRequireRoutableExternalIP = true;
@@ -563,7 +607,7 @@ public:
         nMinSporkKeys = 1;
         fBIP9CheckMasternodesUpgraded = true;
 
-		checkpointData = (CCheckpointData) 
+		checkpointData = (CCheckpointData)
 		{
 			boost::assign::map_list_of
 				(1,     uint256S("0xde31388eddd9e0ea515353628a0ca1f167466f09c45b10354de10459c7c018f2"))
@@ -580,7 +624,6 @@ public:
 
     }
 };
-static CTestNetParams testNetParams;
 
 /**
  * Devnet
@@ -674,6 +717,7 @@ public:
         pchMessageStart[1] = 0xca;
         pchMessageStart[2] = 0xff;
         pchMessageStart[3] = 0xce;
+
         vAlertPubKey = ParseHex("04517d8a699cb43d3938d7b24faaff7cda448ca4ea267723ba614784de661949bf632d6304316b244646dea079735b9a6fc4af804efb4752075b9fe2245e14e412");
         nDefaultPort = 40002;
         nPruneAfterHeight = 1000;
@@ -707,10 +751,9 @@ public:
         consensus.llmqs[Consensus::LLMQ_50_60] = llmq50_60;
         consensus.llmqs[Consensus::LLMQ_400_60] = llmq400_60;
         consensus.llmqs[Consensus::LLMQ_400_85] = llmq400_85;
-        consensus.llmqChainLocks = Consensus::LLMQ_50_60;
-        consensus.llmqForInstantSend = Consensus::LLMQ_50_60;
+        consensus.llmqTypeChainLocks = Consensus::LLMQ_50_60;
+        consensus.llmqTypeInstantSend = Consensus::LLMQ_50_60;
 
-        fMiningRequiresPeers = true;
         fDefaultConsistencyChecks = false;
         fRequireStandard = false;
         fMineBlocksOnDemand = false;
@@ -727,9 +770,10 @@ public:
         fBIP9CheckMasternodesUpgraded = false;
 
         checkpointData = (CCheckpointData) {
-            boost::assign::map_list_of
-            (      0, uint256S("0x000008ca1832a4baf228eb1553c03d3a2c8e02399550dd6ea8d65cec3ef23d2e"))
-            (      1, devnetGenesis.GetHash())
+            {
+                { 0, uint256S("0x000008ca1832a4baf228eb1553c03d3a2c8e02399550dd6ea8d65cec3ef23d2e")},
+                { 1, devnetGenesis.GetHash() },
+            }
         };
 
         chainTxData = ChainTxData{
@@ -738,20 +782,7 @@ public:
             0.01                          // * estimated number of transactions per second
         };
     }
-
-    void UpdateSubsidyAndDiffParams(int nMinimumDifficultyBlocks, int nHighSubsidyBlocks, int nHighSubsidyFactor)
-    {
-        consensus.nMinimumDifficultyBlocks = nMinimumDifficultyBlocks;
-        consensus.nHighSubsidyBlocks = nHighSubsidyBlocks;
-        consensus.nHighSubsidyFactor = nHighSubsidyFactor;
-    }
-
-    void UpdateLLMQChainLocks(Consensus::LLMQType llmqType) {
-        consensus.llmqChainLocks = llmqType;
-    }
 };
-static CDevNetParams *devNetParams;
-
 
 /**
  * Regression test
@@ -822,7 +853,7 @@ public:
         pchMessageStart[1] = 0xc1;
         pchMessageStart[2] = 0xb7;
         pchMessageStart[3] = 0xdc;
-        nDefaultPort = 19994;
+        nDefaultPort = 19899;
         nPruneAfterHeight = 1000;
 
 		genesis = CreateGenesisBlock(1496347864, 18, 0x207fffff, 1, 50 * COIN);
@@ -834,7 +865,6 @@ public:
         vFixedSeeds.clear(); //!< Regtest mode doesn't have any fixed seeds.
         vSeeds.clear();      //!< Regtest mode doesn't have any DNS seeds.
 
-        fMiningRequiresPeers = false;
         fDefaultConsistencyChecks = true;
         fRequireStandard = false;
         fRequireRoutableExternalIP = false;
@@ -843,15 +873,18 @@ public:
         fAllowMultiplePorts = true;
 
         nFulfilledRequestExpireTime = 5*60; // fulfilled requests expire in 5 minutes
+        nPoolMinParticipants = 3;
+        nPoolMaxParticipants = 5;
 
         vSporkAddresses = {"yj949n1UH6fDhw6HtVE5VMj2iSTaSWBMcW"};
         nMinSporkKeys = 1;
         // regtest usually has no masternodes in most tests, so don't check for upgraged MNs
         fBIP9CheckMasternodesUpgraded = false;
 
-        checkpointData = (CCheckpointData){
-            boost::assign::map_list_of
-            ( 0, uint256S("0x000008ca1832a4baf228eb1553c03d3a2c8e02399550dd6ea8d65cec3ef23d2e"))
+        checkpointData = (CCheckpointData) {
+            {
+                {0, uint256S("0x000008ca1832a4baf228eb1553c03d3a2c8e02399550dd6ea8d65cec3ef23d2e")},
+            }
         };
 
         chainTxData = ChainTxData{
@@ -877,94 +910,58 @@ public:
         // long living quorum params
         consensus.llmqs[Consensus::LLMQ_5_60] = llmq5_60;
         consensus.llmqs[Consensus::LLMQ_50_60] = llmq50_60;
-        consensus.llmqChainLocks = Consensus::LLMQ_5_60;
-        consensus.llmqForInstantSend = Consensus::LLMQ_5_60;
-    }
-
-    void UpdateBIP9Parameters(Consensus::DeploymentPos d, int64_t nStartTime, int64_t nTimeout, int64_t nWindowSize, int64_t nThreshold)
-    {
-        consensus.vDeployments[d].nStartTime = nStartTime;
-        consensus.vDeployments[d].nTimeout = nTimeout;
-        if (nWindowSize != -1) {
-            consensus.vDeployments[d].nWindowSize = nWindowSize;
-        }
-        if (nThreshold != -1) {
-            consensus.vDeployments[d].nThreshold = nThreshold;
-        }
-    }
-
-    void UpdateDIP3Parameters(int nActivationHeight, int nEnforcementHeight)
-    {
-        consensus.DIP0003Height = nActivationHeight;
-        consensus.DIP0003EnforcementHeight = nEnforcementHeight;
-    }
-
-    void UpdateBudgetParameters(int nMasternodePaymentsStartBlock, int nBudgetPaymentsStartBlock, int nSuperblockStartBlock)
-    {
-        consensus.nMasternodePaymentsStartBlock = nMasternodePaymentsStartBlock;
-        consensus.nBudgetPaymentsStartBlock = nBudgetPaymentsStartBlock;
-        consensus.nSuperblockStartBlock = nSuperblockStartBlock;
+        consensus.llmqTypeChainLocks = Consensus::LLMQ_5_60;
+        consensus.llmqTypeInstantSend = Consensus::LLMQ_5_60;
     }
 };
-static CRegTestParams regTestParams;
 
-static CChainParams *pCurrentParams = 0;
+static std::unique_ptr<CChainParams> globalChainParams;
 
 const CChainParams &Params() {
-    assert(pCurrentParams);
-    return *pCurrentParams;
+    assert(globalChainParams);
+    return *globalChainParams;
 }
 
-CChainParams& Params(const std::string& chain)
+std::unique_ptr<CChainParams> CreateChainParams(const std::string& chain)
 {
     if (chain == CBaseChainParams::MAIN)
-            return mainParams;
+        return std::unique_ptr<CChainParams>(new CMainParams());
     else if (chain == CBaseChainParams::TESTNET)
-            return testNetParams;
+        return std::unique_ptr<CChainParams>(new CTestNetParams());
     else if (chain == CBaseChainParams::DEVNET) {
-            assert(devNetParams);
-            return *devNetParams;
+        return std::unique_ptr<CChainParams>(new CDevNetParams());
     } else if (chain == CBaseChainParams::REGTEST)
-            return regTestParams;
-    else
-        throw std::runtime_error(strprintf("%s: Unknown chain %s.", __func__, chain));
+        return std::unique_ptr<CChainParams>(new CRegTestParams());
+    throw std::runtime_error(strprintf("%s: Unknown chain %s.", __func__, chain));
 }
 
 void SelectParams(const std::string& network)
 {
-    if (network == CBaseChainParams::DEVNET) {
-        devNetParams = (CDevNetParams*)new uint8_t[sizeof(CDevNetParams)];
-        memset(devNetParams, 0, sizeof(CDevNetParams));
-        new (devNetParams) CDevNetParams();
-    }
-
     SelectBaseParams(network);
-    pCurrentParams = &Params(network);
+    globalChainParams = CreateChainParams(network);
 }
 
-void UpdateRegtestBIP9Parameters(Consensus::DeploymentPos d, int64_t nStartTime, int64_t nTimeout, int64_t nWindowSize, int64_t nThreshold)
+void UpdateVersionBitsParameters(Consensus::DeploymentPos d, int64_t nStartTime, int64_t nTimeout, int64_t nWindowSize, int64_t nThreshold)
 {
-    regTestParams.UpdateBIP9Parameters(d, nStartTime, nTimeout, nWindowSize, nThreshold);
+    globalChainParams->UpdateVersionBitsParameters(d, nStartTime, nTimeout, nWindowSize, nThreshold);
 }
 
-void UpdateRegtestDIP3Parameters(int nActivationHeight, int nEnforcementHeight)
+void UpdateDIP3Parameters(int nActivationHeight, int nEnforcementHeight)
 {
-    regTestParams.UpdateDIP3Parameters(nActivationHeight, nEnforcementHeight);
+    globalChainParams->UpdateDIP3Parameters(nActivationHeight, nEnforcementHeight);
 }
 
-void UpdateRegtestBudgetParameters(int nMasternodePaymentsStartBlock, int nBudgetPaymentsStartBlock, int nSuperblockStartBlock)
+void UpdateBudgetParameters(int nMasternodePaymentsStartBlock, int nBudgetPaymentsStartBlock, int nSuperblockStartBlock)
 {
-    regTestParams.UpdateBudgetParameters(nMasternodePaymentsStartBlock, nBudgetPaymentsStartBlock, nSuperblockStartBlock);
+    globalChainParams->UpdateBudgetParameters(nMasternodePaymentsStartBlock, nBudgetPaymentsStartBlock, nSuperblockStartBlock);
 }
 
 void UpdateDevnetSubsidyAndDiffParams(int nMinimumDifficultyBlocks, int nHighSubsidyBlocks, int nHighSubsidyFactor)
 {
-    assert(devNetParams);
-    devNetParams->UpdateSubsidyAndDiffParams(nMinimumDifficultyBlocks, nHighSubsidyBlocks, nHighSubsidyFactor);
+    globalChainParams->UpdateSubsidyAndDiffParams(nMinimumDifficultyBlocks, nHighSubsidyBlocks, nHighSubsidyFactor);
 }
 
 void UpdateDevnetLLMQChainLocks(Consensus::LLMQType llmqType)
 {
-    assert(devNetParams);
-    devNetParams->UpdateLLMQChainLocks(llmqType);
+    globalChainParams->UpdateLLMQChainLocks(llmqType);
 }

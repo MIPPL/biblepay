@@ -1,4 +1,4 @@
-BiblePay Core 0.14.0
+BiblePay Core 1.5
 =====================
 
 This is the official reference wallet for Biblepay digital currency and comprises the backbone of the Biblepay peer-to-peer network. You can [download BiblePay Core](https://www.biblepay.org/downloads/) or [build it yourself](#building) using the guides below.
@@ -68,6 +68,7 @@ The BiblePay Core repo's [root README](/README.md) contains relevant information
 ### Miscellaneous
 - [Assets Attribution](assets-attribution.md)
 - [Files](files.md)
+- [Fuzz-testing](fuzzing.md)
 - [Reduce Traffic](reduce-traffic.md)
 - [Tor Support](tor.md)
 - [Init Scripts (systemd/upstart/openrc)](init.md)

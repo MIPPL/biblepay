@@ -26,9 +26,14 @@
  * Copyright year (2009-this)
  * Todo: update this when changing our copyright comments in the source
  */
-#define COPYRIGHT_YEAR 2018
+#define COPYRIGHT_YEAR 2020
 
 #endif //HAVE_CONFIG_H
+
+// Check that required client information is defined
+#if !defined(CLIENT_VERSION_MAJOR) || !defined(CLIENT_VERSION_MINOR) || !defined(CLIENT_VERSION_REVISION) || !defined(CLIENT_VERSION_BUILD) || !defined(CLIENT_VERSION_IS_RELEASE) || !defined(COPYRIGHT_YEAR)
+#error Client version information missing: version is not defined by dash-config.h or in any other way
+#endif
 
 /**
  * Converts the parameter X to a string after macro replacement on X has been performed.

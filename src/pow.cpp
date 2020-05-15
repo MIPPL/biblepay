@@ -32,7 +32,7 @@ unsigned int static KimotoGravityWell(const CBlockIndex* pindexLast, const Conse
     uint64_t PastBlocksMin = pastSecondsMin / params.nPowTargetSpacing;
     uint64_t PastBlocksMax = pastSecondsMax / params.nPowTargetSpacing;
 
-    if (BlockLastSolved == NULL || BlockLastSolved->nHeight == 0 || (uint64_t)BlockLastSolved->nHeight < PastBlocksMin) { return UintToArith256(params.powLimit).GetCompact(); }
+    if (BlockLastSolved == nullptr || BlockLastSolved->nHeight == 0 || (uint64_t)BlockLastSolved->nHeight < PastBlocksMin) { return UintToArith256(params.powLimit).GetCompact(); }
 
     for (unsigned int i = 1; BlockReading && BlockReading->nHeight > 0; i++) {
         if (PastBlocksMax > 0 && i > PastBlocksMax) { break; }
@@ -63,7 +63,7 @@ unsigned int static KimotoGravityWell(const CBlockIndex* pindexLast, const Conse
                 if ((PastRateAdjustmentRatio <= EventHorizonDeviationSlow) || (PastRateAdjustmentRatio >= EventHorizonDeviationFast))
                 { assert(BlockReading); break; }
         }
-        if (BlockReading->pprev == NULL) { assert(BlockReading); break; }
+        if (BlockReading->pprev == nullptr) { assert(BlockReading); break; }
         BlockReading = BlockReading->pprev;
     }
 
@@ -186,7 +186,7 @@ unsigned int static DarkGravityWave(const CBlockIndex* pindexLast, const CBlockH
 
 unsigned int GetNextWorkRequiredBTC(const CBlockIndex* pindexLast, const CBlockHeader *pblock, const Consensus::Params& params)
 {
-    assert(pindexLast != NULL);
+    assert(pindexLast != nullptr);
     unsigned int nProofOfWorkLimit = UintToArith256(params.powLimit).GetCompact();
 
     // Only change once per interval
@@ -222,25 +222,43 @@ unsigned int GetNextWorkRequiredBTC(const CBlockIndex* pindexLast, const CBlockH
 
 unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader *pblock, const Consensus::Params& params)
 {
-	// DAC only uses DGW
+    assert(pindexLast != nullptr);
+    assert(pblock != nullptr);
+
+    // DAC only uses DGW
 	return DarkGravityWave(pindexLast, pblock, params);
    
     // this is only active on devnets
     if (pindexLast->nHeight < params.nMinimumDifficultyBlocks) {
-        unsigned int nProofOfWorkLimit = UintToArith256(params.powLimit).GetCompact();
-        return nProofOfWorkLimit;
+        return bnPowLimit.GetCompact();
     }
 
-    // Most recent algo first
-    if (pindexLast->nHeight + 1 >= params.nPowDGWHeight) {
-        return DarkGravityWave(pindexLast, pblock, params);
-    }
-    else if (pindexLast->nHeight + 1 >= params.nPowKGWHeight) {
-        return KimotoGravityWell(pindexLast, params);
-    }
-    else {
+    if (pindexLast->nHeight + 1 < params.nPowKGWHeight) {
         return GetNextWorkRequiredBTC(pindexLast, pblock, params);
     }
+
+    // Note: GetNextWorkRequiredBTC has it's own special difficulty rule,
+    // so we only apply this to post-BTC algos.
+    if (params.fPowAllowMinDifficultyBlocks) {
+        // recent block is more than 2 hours old
+        if (pblock->GetBlockTime() > pindexLast->GetBlockTime() + 2 * 60 * 60) {
+            return bnPowLimit.GetCompact();
+        }
+        // recent block is more than 10 minutes old
+        if (pblock->GetBlockTime() > pindexLast->GetBlockTime() + params.nPowTargetSpacing * 4) {
+            arith_uint256 bnNew = arith_uint256().SetCompact(pindexLast->nBits) * 10;
+            if (bnNew > bnPowLimit) {
+                return bnPowLimit.GetCompact();
+            }
+            return bnNew.GetCompact();
+        }
+    }
+
+    if (pindexLast->nHeight + 1 < params.nPowDGWHeight) {
+        return KimotoGravityWell(pindexLast, params);
+    }
+
+    return DarkGravityWave(pindexLast, params);
 }
 
 // for DIFF_BTC only!

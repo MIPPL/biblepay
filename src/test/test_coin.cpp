@@ -9,6 +9,8 @@
 #include "chainparams.h"
 #include "consensus/consensus.h"
 #include "consensus/validation.h"
+#include "crypto/sha256.h"
+#include "fs.h"
 #include "key.h"
 #include "validation.h"
 #include "miner.h"
@@ -21,9 +23,6 @@
 #include "rpc/server.h"
 #include "rpc/register.h"
 #include "script/sigcache.h"
-#include "stacktraces.h"
-
-#include "test/testutil.h"
 
 #include "evo/specialtx.h"
 #include "evo/deterministicmns.h"
@@ -32,24 +31,34 @@
 
 #include <memory>
 
-#include <boost/filesystem.hpp>
-#include <boost/test/unit_test.hpp>
-#include <boost/test/unit_test_monitor.hpp>
-#include <boost/thread.hpp>
+void CConnmanTest::AddNode(CNode& node)
+{
+    LOCK(g_connman->cs_vNodes);
+    g_connman->vNodes.push_back(&node);
+}
 
-std::unique_ptr<CConnman> g_connman;
-FastRandomContext insecure_rand_ctx(true);
+void CConnmanTest::ClearNodes()
+{
+    LOCK(g_connman->cs_vNodes);
+    g_connman->vNodes.clear();
+}
+
+uint256 insecure_rand_seed = GetRandHash();
+FastRandomContext insecure_rand_ctx(insecure_rand_seed);
 
 extern bool fPrintToConsole;
 extern void noui_connect();
 
 BasicTestingSetup::BasicTestingSetup(const std::string& chainName)
 {
+        SHA256AutoDetect();
+        RandomInit();
         ECC_Start();
         BLSInit();
         SetupEnvironment();
         SetupNetworking();
         InitSignatureCache();
+        InitScriptExecutionCache();
         fPrintToDebugLog = false; // don't want to write to debug.log file
         fCheckBlockIndex = true;
         SelectParams(chainName);
@@ -64,7 +73,6 @@ BasicTestingSetup::~BasicTestingSetup()
         delete evoDb;
 
         ECC_Stop();
-        g_connman.reset();
 }
 
 TestingSetup::TestingSetup(const std::string& chainName) : BasicTestingSetup(chainName)
@@ -74,9 +82,14 @@ TestingSetup::TestingSetup(const std::string& chainName) : BasicTestingSetup(cha
         // instead of unit tests, but for now we need these here.
         RegisterAllCoreRPCCommands(tableRPC);
         ClearDatadirCache();
-        pathTemp = GetTempPath() / strprintf("test_%lu_%i", (unsigned long)GetTime(), (int)(GetRand(100000)));
-        boost::filesystem::create_directories(pathTemp);
-        ForceSetArg("-datadir", pathTemp.string());
+        pathTemp = fs::temp_directory_path() / strprintf("test_%lu_%i", (unsigned long)GetTime(), (int)(InsecureRandRange(100000)));
+        fs::create_directories(pathTemp);
+        gArgs.ForceSetArg("-datadir", pathTemp.string());
+
+        // Note that because we don't bother running a scheduler thread here,
+        // callbacks via CValidationInterface are unreliable, but that's OK,
+        // our unit tests aren't testing multiple parts of the code at once.
+        GetMainSignals().RegisterBackgroundSignalScheduler(scheduler);
         mempool.setSanityCheck(1.0);
         g_connman = std::unique_ptr<CConnman>(new CConnman(0x1337, 0x1337)); // Deterministic randomness for tests.
         connman = g_connman.get();
@@ -84,30 +97,36 @@ TestingSetup::TestingSetup(const std::string& chainName) : BasicTestingSetup(cha
         pcoinsdbview = new CCoinsViewDB(1 << 23, true);
         llmq::InitLLMQSystem(*evoDb, nullptr, true);
         pcoinsTip = new CCoinsViewCache(pcoinsdbview);
-        BOOST_REQUIRE(InitBlockIndex(chainparams));
+        if (!LoadGenesisBlock(chainparams)) {
+            throw std::runtime_error("LoadGenesisBlock failed.");
+        }
         {
             CValidationState state;
-            bool ok = ActivateBestChain(state, chainparams);
-            BOOST_REQUIRE(ok);
+            if (!ActivateBestChain(state, chainparams)) {
+                throw std::runtime_error("ActivateBestChain failed.");
+            }
         }
         nScriptCheckThreads = 3;
         for (int i=0; i < nScriptCheckThreads-1; i++)
             threadGroup.create_thread(&ThreadScriptCheck);
-        RegisterNodeSignals(GetNodeSignals());
+        peerLogic.reset(new PeerLogicValidation(connman, scheduler));
 }
 
 TestingSetup::~TestingSetup()
 {
-        UnregisterNodeSignals(GetNodeSignals());
         llmq::InterruptLLMQSystem();
         threadGroup.interrupt_all();
         threadGroup.join_all();
+        GetMainSignals().FlushBackgroundCallbacks();
+        GetMainSignals().UnregisterBackgroundSignalScheduler();
+        g_connman.reset();
+        peerLogic.reset();
         UnloadBlockIndex();
         delete pcoinsTip;
         llmq::DestroyLLMQSystem();
         delete pcoinsdbview;
         delete pblocktree;
-        boost::filesystem::remove_all(pathTemp);
+        fs::remove_all(pathTemp);
 }
 
 TestChainSetup::TestChainSetup(int blockCount) : TestingSetup(CBaseChainParams::REGTEST)
@@ -134,7 +153,7 @@ TestChainSetup::CreateAndProcessBlock(const std::vector<CMutableTransaction>& tx
     auto block = CreateBlock(txns, scriptPubKey);
 
     std::shared_ptr<const CBlock> shared_pblock = std::make_shared<const CBlock>(block);
-    ProcessNewBlock(chainparams, shared_pblock, true, NULL);
+    ProcessNewBlock(chainparams, shared_pblock, true, nullptr);
 
     CBlock result = block;
     return result;
@@ -172,48 +191,3 @@ CTxMemPoolEntry TestMemPoolEntryHelper::FromTx(const CTransaction &txn) {
     return CTxMemPoolEntry(MakeTransactionRef(txn), nFee, nTime, nHeight,
                            spendsCoinbase, sigOpCount, lp);
 }
-
-void Shutdown(void* parg)
-{
-  exit(EXIT_SUCCESS);
-}
-
-void StartShutdown()
-{
-  exit(EXIT_SUCCESS);
-}
-
-bool ShutdownRequested()
-{
-  return false;
-}
-
-template<typename T>
-void translate_exception(const T &e)
-{
-    std::cerr << GetPrettyExceptionStr(std::current_exception()) << std::endl;
-    throw;
-}
-
-template<typename T>
-void register_exception_translator()
-{
-    boost::unit_test::unit_test_monitor.register_exception_translator<T>(&translate_exception<T>);
-}
-
-struct ExceptionInitializer {
-    ExceptionInitializer()
-    {
-        RegisterPrettyTerminateHander();
-        RegisterPrettySignalHandlers();
-
-        register_exception_translator<std::exception>();
-        register_exception_translator<std::string>();
-        register_exception_translator<const char*>();
-    }
-    ~ExceptionInitializer()
-    {
-    }
-};
-
-BOOST_GLOBAL_FIXTURE( ExceptionInitializer );

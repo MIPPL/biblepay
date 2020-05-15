@@ -1,4 +1,5 @@
-// Copyright (c) 2018 The DAC Core developers
+// Copyright (c) 2018-2020 The Dash Core developers
+// Copyright (c) 2017-2020 The DAC Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -66,6 +67,6 @@ private:
 
 extern CQuorumBlockProcessor* quorumBlockProcessor;
 
-}
+} // namespace llmq
 
 #endif//COIN_QUORUMS_BLOCKPROCESSOR_H

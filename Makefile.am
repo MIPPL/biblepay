@@ -44,6 +44,9 @@ DIST_CONTRIB = $(top_srcdir)/contrib/biblepay-cli.bash-completion \
 	       $(top_srcdir)/contrib/biblepay-tx.bash-completion \
 	       $(top_srcdir)/contrib/biblepayd.bash-completion \
 	       $(top_srcdir)/contrib/init
+DIST_SHARE = \
+  $(top_srcdir)/share/genbuild.sh \
+  $(top_srcdir)/share/rpcuser
 
 BIN_CHECKS=$(top_srcdir)/contrib/devtools/symbol-check.py \
            $(top_srcdir)/contrib/devtools/security-check.py
@@ -166,12 +169,14 @@ $(BITCOIN_CLI_BIN): FORCE
 	$(MAKE) -C src $(@F)
 
 if USE_LCOV
+LCOV_FILTER_PATTERN=-p "/usr/include/" -p "src/leveldb/" -p "src/bench/" -p "src/univalue" -p "src/crypto/ctaes" -p "src/secp256k1"
 
 baseline.info:
 	$(LCOV) -c -i -d $(abs_builddir)/src -o $@
 
 baseline_filtered.info: baseline.info
-	$(LCOV) -r $< "/usr/include/*" -o $@
+	$(abs_builddir)/contrib/filter-lcov.py $(LCOV_FILTER_PATTERN) $< $@
+	$(LCOV) -a $@ $(LCOV_OPTS) -o $@
 
 leveldb_baseline.info: baseline_filtered.info
 	$(LCOV) -c -i -d $(abs_builddir)/src/leveldb -b $(abs_builddir)/src/leveldb -o $@
@@ -197,8 +202,9 @@ rpc_test.info: test_biblepay_filtered.info
 	$(LCOV) -z -d $(abs_builddir)/src
 	$(LCOV) -z -d $(abs_builddir)/src/leveldb
 
-rpc_test_filtered.info: rpc_test.info
-	$(LCOV) -r $< "/usr/include/*" -o $@
+functional_test_filtered.info: functional_test.info
+	$(abs_builddir)/contrib/filter-lcov.py $(LCOV_FILTER_PATTERN) $< $@
+	$(LCOV) -a $@ $(LCOV_OPTS) -o $@
 
 test_biblepay_coverage.info: baseline_filtered_combined.info test_biblepay_filtered.info
 	$(LCOV) -a baseline_filtered.info -a leveldb_baseline_filtered.info -a test_biblepay_filtered.info -o $@
@@ -211,7 +217,7 @@ test_biblepay.coverage/.dirstamp:  test_biblepay_coverage.info
 	@touch $@
 
 total.coverage/.dirstamp: total_coverage.info
-	$(GENHTML) -s $< -o $(@D)
+	$(GENHTML) -s $(LCOV_OPTS) $< -o $(@D)
 	@touch $@
 
 cov: test_biblepay.coverage/.dirstamp total.coverage/.dirstamp
@@ -220,7 +226,47 @@ endif
 
 dist_noinst_SCRIPTS = autogen.sh
 
-EXTRA_DIST = $(top_srcdir)/share/genbuild.sh qa/pull-tester/rpc-tests.py qa/rpc-tests $(DIST_CONTRIB) $(DIST_DOCS) $(WINDOWS_PACKAGING) $(OSX_PACKAGING) $(BIN_CHECKS)
+EXTRA_DIST = $(DIST_SHARE) test/functional/test_runner.py test/functional $(DIST_CONTRIB) $(DIST_DOCS) $(WINDOWS_PACKAGING) $(OSX_PACKAGING) $(BIN_CHECKS)
+
+EXTRA_DIST += \
+    test/util/bitcoin-util-test.py \
+    test/util/data/bitcoin-util-test.json \
+    test/util/data/blanktxv1.hex \
+    test/util/data/blanktxv1.json \
+    test/util/data/blanktxv2.hex \
+    test/util/data/blanktxv2.json \
+    test/util/data/tt-delin1-out.hex \
+    test/util/data/tt-delin1-out.json \
+    test/util/data/tt-delout1-out.hex \
+    test/util/data/tt-delout1-out.json \
+    test/util/data/tt-locktime317000-out.hex \
+    test/util/data/tt-locktime317000-out.json \
+    test/util/data/tx394b54bb.hex \
+    test/util/data/txcreate1.hex \
+    test/util/data/txcreate1.json \
+    test/util/data/txcreate2.hex \
+    test/util/data/txcreate2.json \
+    test/util/data/txcreatedata1.hex \
+    test/util/data/txcreatedata1.json \
+    test/util/data/txcreatedata2.hex \
+    test/util/data/txcreatedata2.json \
+    test/util/data/txcreatedata_seq0.hex \
+    test/util/data/txcreatedata_seq0.json \
+    test/util/data/txcreatedata_seq1.hex \
+    test/util/data/txcreatedata_seq1.json \
+    test/util/data/txcreatemultisig1.hex \
+    test/util/data/txcreatemultisig1.json \
+    test/util/data/txcreatemultisig2.hex \
+    test/util/data/txcreatemultisig2.json \
+    test/util/data/txcreateoutpubkey1.hex \
+    test/util/data/txcreateoutpubkey1.json \
+    test/util/data/txcreatescript1.hex \
+    test/util/data/txcreatescript1.json \
+    test/util/data/txcreatescript2.hex \
+    test/util/data/txcreatescript2.json \
+    test/util/data/txcreatesignv1.hex \
+    test/util/data/txcreatesignv1.json \
+    test/util/data/txcreatesignv2.hex
 
 CLEANFILES = $(OSX_DMG) $(BITCOIN_WIN_INSTALLER)
 

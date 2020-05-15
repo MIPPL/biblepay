@@ -1,5 +1,5 @@
 // Copyright (c) 2011-2015 The Bitcoin Core developers
-// Copyright (c) 2014-2018 The Dash Core developers
+// Copyright (c) 2014-2019 The Dash Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -63,7 +63,7 @@ SplashScreen::SplashScreen(Qt::WindowFlags f, const NetworkStyle *networkStyle) 
     QString font = QApplication::font().toString();
 
     // load the bitmap for writing some text over it
-    pixmap = QPixmap(splashScreenPath);
+    pixmap = networkStyle->getSplashImage();
 
     QPainter pixPaint(&pixmap);
 	// gold: 255,215,0 (Bezaleel)
@@ -204,7 +204,7 @@ void SplashScreen::unsubscribeFromCoreSignals()
     uiInterface.InitMessage.disconnect(boost::bind(InitMessage, this, _1));
     uiInterface.ShowProgress.disconnect(boost::bind(ShowProgress, this, _1, _2));
 #ifdef ENABLE_WALLET
-    Q_FOREACH(CWallet* const & pwallet, connectedWallets) {
+    for (CWallet* const & pwallet : connectedWallets) {
         pwallet->ShowProgress.disconnect(boost::bind(ShowProgress, this, _1, _2));
     }
 #endif

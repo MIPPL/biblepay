@@ -28,10 +28,10 @@ public:
         if (nSize > m_remaining)
             throw std::ios_base::failure(std::string(__func__) + ": end of data");
 
-        if (pch == NULL)
+        if (pch == nullptr)
             throw std::ios_base::failure(std::string(__func__) + ": bad destination buffer");
 
-        if (m_data == NULL)
+        if (m_data == nullptr)
             throw std::ios_base::failure(std::string(__func__) + ": bad source buffer");
 
         memcpy(pch, m_data, nSize);
@@ -68,7 +68,7 @@ struct ECCryptoClosure
 };
 
 ECCryptoClosure instance_of_eccryptoclosure;
-}
+} // namespace
 
 /** Check that all specified flags are part of the libconsensus interface. */
 static bool verify_flags(unsigned int flags)
@@ -94,7 +94,9 @@ int biblepayconsensus_verify_script(const unsigned char *scriptPubKey, unsigned 
          // Regardless of the verification result, the tx did not error.
          set_error(err, biblepayconsensus_ERR_OK);
 
-        return VerifyScript(tx.vin[nIn].scriptSig, CScript(scriptPubKey, scriptPubKey + scriptPubKeyLen), flags, TransactionSignatureChecker(&tx, nIn), NULL);
+        PrecomputedTransactionData txdata(tx);
+		CAmount am(0);
+        return VerifyScript(tx.vin[nIn].scriptSig, CScript(scriptPubKey, scriptPubKey + scriptPubKeyLen), flags, TransactionSignatureChecker(&tx, nIn, am, txdata), nullptr);
     } catch (const std::exception&) {
         return set_error(err, biblepayconsensus_ERR_TX_DESERIALIZE); // Error deserializing
     }

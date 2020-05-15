@@ -23,6 +23,6 @@ void DestroyLLMQSystem();
 void StartLLMQSystem();
 void StopLLMQSystem();
 void InterruptLLMQSystem();
-}
+} // namespace llmq
 
 #endif //COIN_QUORUMS_INIT_H

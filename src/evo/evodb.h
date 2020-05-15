@@ -1,4 +1,5 @@
-// Copyright (c) 2018 The DAC Core developers
+// Copyright (c) 2018-2020 The Dash Core developers
+// Copyright (c) 2017-2020 The DAC Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -13,6 +14,22 @@
 // "b_b2" was used after compact diffs were introduced
 static const std::string EVODB_BEST_BLOCK = "b_b2";
 
+class CEvoDB;
+
+class CEvoDBScopedCommitter
+{
+private:
+    CEvoDB& evoDB;
+    bool didCommitOrRollback{false};
+
+public:
+    explicit CEvoDBScopedCommitter(CEvoDB& _evoDB);
+    ~CEvoDBScopedCommitter();
+
+    void Commit();
+    void Rollback();
+};
+
 class CEvoDB
 {
 private:
@@ -21,7 +38,6 @@ private:
 
     typedef CDBTransaction<CDBWrapper, CDBBatch> RootTransaction;
     typedef CDBTransaction<RootTransaction, RootTransaction> CurTransaction;
-    typedef CScopedDBTransaction<RootTransaction, RootTransaction> ScopedTransaction;
 
     CDBBatch rootBatch;
     RootTransaction rootDBTransaction;
@@ -30,11 +46,10 @@ private:
 public:
     CEvoDB(size_t nCacheSize, bool fMemory = false, bool fWipe = false);
 
-    std::unique_ptr<ScopedTransaction> BeginTransaction()
+    std::unique_ptr<CEvoDBScopedCommitter> BeginTransaction()
     {
         LOCK(cs);
-        auto t = ScopedTransaction::Begin(curDBTransaction);
-        return t;
+        return std::make_unique<CEvoDBScopedCommitter>(*this);
     }
 
     CurTransaction& GetCurTransaction()
@@ -84,6 +99,12 @@ public:
 
     bool VerifyBestBlock(const uint256& hash);
     void WriteBestBlock(const uint256& hash);
+
+private:
+    // only CEvoDBScopedCommitter is allowed to invoke these
+    friend class CEvoDBScopedCommitter;
+    void CommitCurTransaction();
+    void RollbackCurTransaction();
 };
 
 extern CEvoDB* evoDb;
