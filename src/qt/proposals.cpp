@@ -257,7 +257,7 @@ QVector<QVector<QString> > Proposals::SplitData(const QString &pStr)
         for (int i=0; i<nProposals; i++)
         {
             proposalMatrix.append(QVector<QString>());
-            QStringList proposalDetail = proposals[i].split('|');
+            QStringList proposalDetail = proposals[i].split('~');
             int detailSize = proposalDetail.size();
             for (int j = 0; j < detailSize; j++)
 			{

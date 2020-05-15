@@ -50,6 +50,8 @@ ProposalAddDialog::ProposalAddDialog(const PlatformStyle *platformStyle, QWidget
 	ui->cmbExpenseType->addItem("PR");
 	ui->cmbExpenseType->addItem("P2P");
 	ui->cmbExpenseType->addItem("IT");
+	ui->cmbExpenseType->addItem("SPORK");
+
 	connect(ui->btnAttach, SIGNAL(clicked()), this, SLOT(attachFile()));
 
  }

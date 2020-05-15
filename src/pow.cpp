@@ -91,9 +91,11 @@ unsigned int static DarkGravityWave(const CBlockIndex* pindexLast, const CBlockH
     int64_t CountBlocks = 0;
     arith_uint256 PastDifficultyAverage;
     arith_uint256 PastDifficultyAveragePrev;
-	
-	bool fProdChain = Params().NetworkIDString() == "main" ? true : false;
+	static int64_t BPL_TRIGGER_SIZE = 500000;
 
+	bool fProdChain = Params().NetworkIDString() == "main" ? true : false;
+	int64_t nTotalBlockSize = 0;
+	int64_t nAvgBlockSize = 0;
 	// Mandatory Upgrade at block f7000 (As of 08-15-2017 we are @3265 in prod & @1349 in testnet)
 	// This change should prevents blocks from being solved in clumps
     if (BlockLastSolved == NULL || BlockLastSolved->nHeight == 0 || BlockLastSolved->nHeight < PastBlocksMin) 
@@ -112,8 +114,8 @@ unsigned int static DarkGravityWave(const CBlockIndex* pindexLast, const CBlockH
               else { PastDifficultyAverage = ((PastDifficultyAveragePrev * CountBlocks) + (arith_uint256().SetCompact(BlockReading->nBits))) / (CountBlocks + 1); }
             PastDifficultyAveragePrev = PastDifficultyAverage;
         }
-
-        if(LastBlockTime > 0)
+		nTotalBlockSize += ::GetSerializeSize(*pblock, SER_NETWORK, PROTOCOL_VERSION);
+	    if(LastBlockTime > 0)
 		{
             int64_t Diff = (LastBlockTime - BlockReading->GetBlockTime());
             nActualTimespan += Diff;
@@ -124,16 +126,25 @@ unsigned int static DarkGravityWave(const CBlockIndex* pindexLast, const CBlockH
         BlockReading = BlockReading->pprev;
     }
 
-    arith_uint256 bnNew(PastDifficultyAverage);
+	if (CountBlocks < 1)
+	{
+		nAvgBlockSize = nTotalBlockSize;
+	}
+	else
+	{
+		nAvgBlockSize = nTotalBlockSize / CountBlocks;
+	}
 
+	// LogPrintf("\nBPL tbs %f, abs %f ", nTotalBlockSize, nAvgBlockSize);
+	// BPL
+	// Rule 1. When the average block size over the last 4 blocks exceeds 500K (50% of 1meg), we target 20 second blocks.  Since we have chainlocks, this is safe.
+	// End of BPL
+    arith_uint256 bnNew(PastDifficultyAverage);
     int64_t _nTargetTimespan = CountBlocks * params.nPowTargetSpacing; 
-	// DAC:  Change params.nPowTargetSpacing to equal 7 minute blocks during next mandatory, the default calculation calls for 7*60=420 nPowTargetSpacing
-	// Approaching this mathematically, with POBH, we have historically emitted 159 blocks per day out of 202, a rate of 20% below normal - a rate that is too slow.
-	// The dev team believes this is attributed entirely to the late block threshhold parameter.  After the F11000 cutover block, this late threshhold is being reduced
-	// from 30 minutes to 16 minutes, with 16 minutes bringing the blocks from 9 minute spacing to 8.1 minute spacing (meaning we are still going to be slow by 60.1 seconds)
-	// Therefore we must reduce the nPowTargetSpacing by 10% more to compensate for the difference.  Shooting for 7 minute blocks, we now adjust nPowTargetSpacing to 390
-	// In summary we are making the assumption that the gained 30 seconds per block target will equalize the effect our late blocks per day lag the chain.
-	// As of March 9th 2018, we are still emitting blocks 19% too slow, decreasing time interval to 315 
+	// Note that BBP has 7 minute block spacing.
+	// We recently added the 'exec masterclock' command (in 2020).  This allows us to target 7 minute blocks very accurately.
+	// The chain was slow from 2017 to 2019 (slow by 11%, as we emitted 192K blocks while we should have emitted 219K blocks), however now with RandomX, we are 2.2% fast.  So the difference should correct itself over the next 30 months through convergence.  We will continue to monitor exec masterclock to ensure we are on the right trajectory for a square emission over the long term.
+
 	if (pindexLast->nHeight >= params.F11000_CUTOVER_HEIGHT && pindexLast->nHeight < params.F12000_CUTOVER_HEIGHT)
 	{
 		_nTargetTimespan = CountBlocks * 390;
@@ -163,8 +174,13 @@ unsigned int static DarkGravityWave(const CBlockIndex* pindexLast, const CBlockH
 			_nTargetTimespan = CountBlocks * 300;  // 7 minute blocks in testnet
 		}
 	}
+	// BPL
 
-	// if (fDebugMaster) LogPrintf(" Height: %f, targettimespan %f  nActualTimespan %f ",(double)pindexLast->nHeight, (double)_nTargetTimespan, (double)nActualTimespan);
+	if (pindexLast->nHeight > params.POOM_PHASEOUT_HEIGHT)
+	{
+		if (nAvgBlockSize > BPL_TRIGGER_SIZE)
+			_nTargetTimespan = CountBlocks * 20;
+	}
 
     if (nActualTimespan < _nTargetTimespan / 2)
         nActualTimespan = _nTargetTimespan / 2;
@@ -334,19 +350,28 @@ bool CheckProofOfWork(uint256 hash, unsigned int nBits, const Consensus::Params&
 		if (UintToArith256(uBibleHash) > bnTarget && nPrevBlockTime > 0) 
 		{
 			LogPrintf("\nCheckBlockHeader::ERROR-FAILED[1] height %f, nonce %f", nPrevHeight, nNonce);
-  
-			return false;
+ 			return false;
 		}
 	}
-	else if (nPrevHeight >= params.RANDOMX_HEIGHT)
+	else if (nPrevHeight >= params.RANDOMX_HEIGHT && nPrevHeight <= params.POOM_PHASEOUT_HEIGHT)
 	{
 		// RandomX Era:
 		uint256 rxhash = GetRandomXHash(sHeaderHex, uRXKey, pindexPrev->GetBlockHash(), iThreadID);
 		if (UintToArith256(ComputeRandomXTarget(rxhash, nPrevBlockTime, nBlockTime)) > bnTarget) 
 		{
 			LogPrintf("\nCheckBlockHeader::ERROR-FAILED[2] height %f, nonce %f", nPrevHeight, nNonce);
-  
 			return error("CheckProofOfWork Failed:ERROR: RandomX high-hash, Height %f, PrevTime %f, Time %f, Nonce %f ", (double)nPrevHeight, 
+				(double)nPrevBlockTime, (double)nBlockTime, (double)nNonce);
+		}
+	}
+	else if (nPrevHeight > params.POOM_PHASEOUT_HEIGHT)
+	{
+		// RandomX Era (Phase II):
+		uint256 rxhash = GetRandomXHash2(sHeaderHex, uRXKey, pindexPrev->GetBlockHash(), iThreadID);
+		if (UintToArith256(ComputeRandomXTarget(rxhash, nPrevBlockTime, nBlockTime)) > bnTarget) 
+		{
+			LogPrintf("\nCheckBlockHeader::ERROR-FAILED[4] height %f, nonce %f", nPrevHeight, nNonce);
+     		return error("CheckProofOfWork Failed:ERROR: RandomX high-hash, Height %f, PrevTime %f, Time %f, Nonce %f ", (double)nPrevHeight, 
 				(double)nPrevBlockTime, (double)nBlockTime, (double)nNonce);
 		}
 	}

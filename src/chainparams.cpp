@@ -437,7 +437,7 @@ class CTestNetParams : public CChainParams {
 public:
     CTestNetParams() {
         strNetworkID = "test";
-		consensus.POOM_PHASEOUT_HEIGHT = 37800; 
+		consensus.POOM_PHASEOUT_HEIGHT = 38000; 
 
 		consensus.PODC_LAST_BLOCK = 100; // March 13th, 2019
 		consensus.PODC2_CUTOVER_HEIGHT = 21000;  // Go live height for PODC 2.0, DWS (Christmas 2019)

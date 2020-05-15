@@ -788,7 +788,7 @@ std::string GetActiveProposals()
     std::vector<const CGovernanceObject*> objs = governance.GetAllNewerThan(nStartTime);
 	std::string sXML;
 	int id = 0;
-	std::string sDelim = "|";
+	std::string sDelim = "~";
 	std::string sZero = "\0";
 	int nLastSuperblock = 0;
 	int nNextSuperblock = 0;
@@ -3477,10 +3477,14 @@ CAmount GetAnnualDWSReward(int nHeight)
 	{
 		nDWS = nTotal * .10;
 	}
-	else if (nHeight >= consensusParams.ANTI_GPU_HEIGHT)
+	else if (nHeight >= consensusParams.ANTI_GPU_HEIGHT && nHeight <= consensusParams.POOM_PHASEOUT_HEIGHT)
 	{
 		// Per https://wiki.bible[pay].org/Emission_Schedule, DWS should emit 4.3MM per month in the first year, deflating at 20.04% per year
 		nDWS = nTotal * .325;
+	}
+	else if (nHeight > consensusParams.POOM_PHASEOUT_HEIGHT)
+	{
+		nDWS = nTotal * .64;
 	}
 	if (fDebugSpam)
 		LogPrintf("Annual Emission %f, DWS %f", (double)nTotal/COIN, (double)nDWS/COIN);
@@ -3961,4 +3965,14 @@ uint256 GetRandomXHash(std::string sHeaderHex, uint256 key, uint256 hashPrevBloc
 	uint256 uRXMined = RandomX_Hash(data0, key, iThreadID);
 	ss << hashPrevBlock << uRXMined;
 	return HashBlake((const char *)vch.data(), (const char *)vch.data() + vch.size());
+}
+
+uint256 GetRandomXHash2(std::string sHeaderHex, uint256 key, uint256 hashPrevBlock, int iThreadID)
+{
+	// *****************************************                      RandomX - Hash Only                          ************************************************************************
+	std::unique_lock<std::mutex> lock(cs_rxhash[iThreadID]);
+	std::string randomXBlockHeader = ExtractXML(sHeaderHex, "<rxheader>", "</rxheader>");
+	std::vector<unsigned char> data0 = ParseHex(randomXBlockHeader);
+	uint256 uRXMined = RandomX_Hash(data0, key, iThreadID);
+	return uRXMined;
 }
