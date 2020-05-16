@@ -9,11 +9,11 @@
 #include "rpcpodc.h"
 #include "smartcontract-client.h"
 #include "init.h"
-#include "activemasternode.h"
-#include "governance-classes.h"
-#include "governance.h"
-#include "masternode-sync.h"
-#include "masternode-payments.h"
+#include "masternode/activemasternode.h"
+#include "governance/governance-classes.h"
+#include "governance/governance.h"
+#include "masternode/masternode-sync.h"
+#include "masternode/masternode-payments.h"
 #include "messagesigner.h"
 #include "spork.h"
 #include <boost/lexical_cast.hpp>
@@ -189,12 +189,10 @@ double GetProminenceCap(std::string sCampaignName, double nPoints, double nPromi
 		// Cap is in effect, so reverse engineer the payment to the actual market value
 		double nProjectedAmount = nUSDSpent / nPrice;
 		double nProjectedProminence = nProjectedAmount / nPaymentsLimit;
-		if (fDebugSpam)
-			LogPrintf(" GetProminenceCap Exceeded - new prominence %f ", nProjectedProminence);
+        LogPrintf(" GetProminenceCap Exceeded - new prominence %f ", nProjectedProminence);
 		nProminence = nProjectedProminence;
 	}
-	if (fDebugSpam)
-		LogPrintf("\n GetProminenceCap Points %f, Prominence %f, USD Price %f, UserReward %f  ", nPoints, nProminence, nPrice, nRewardUSD);
+	LogPrintf("\n GetProminenceCap Points %f, Prominence %f, USD Price %f, UserReward %f  ", nPoints, nProminence, nPrice, nRewardUSD);
 	return nProminence;
 }
 
@@ -237,8 +235,7 @@ double GetChildBalance(std::string sChildID, std::string sCharity)
 				if (dTotal == -999) 
 					dTotal = 0;
 				dTotal += dr;
-				if (fDebugSpam)
-					LogPrintf("childid %s, added %s, notes %s DrCr %f total %f \n", sID, sAdded, sNotes, dr, dTotal);
+                LogPrintf("childid %s, added %s, notes %s DrCr %f total %f \n", sID, sAdded, sNotes, dr, dTotal);
 			}
 		}
 	}
@@ -510,8 +507,7 @@ double CalculatePoints(std::string sCampaign, std::string sDiary, double nCoinAg
 					double nMonthlyRate = GetSporkDouble(sCampaign + "monthlyrate", 40);
 					double nDailyCharges = nMonthlyRate / 30;
 					nTotalPoints += (nDailyCharges * 1000);
-					if (fDebugSpam)
-						LogPrintf("\nFound Child %s for CPK %s, crediting Daily Charges %f, TotalPoints %f ", sChildID, sSponsorCPK, nDailyCharges, nTotalPoints);
+                    LogPrintf("\nFound Child %s for CPK %s, crediting Daily Charges %f, TotalPoints %f ", sChildID, sSponsorCPK, nDailyCharges, nTotalPoints);
 				}
 			}
 		}
@@ -652,7 +648,7 @@ std::string AssessBlocks(int nHeight, bool fCreatingContract)
 	std::map<std::string, double> mCampaignPoints;
 	std::map<std::string, CPK> mCPKCampaignPoints;
 	std::map<std::string, double> mCampaigns;
-	double dDebugLevel = cdbl(GetArg("-debuglevel", "0"), 0);
+	double dDebugLevel = cdbl(gArgs.GetArg("-debuglevel", "0"), 0);
 	std::string sDiaries;
 	std::string sAnalyzeUser = ReadCache("analysis", "user");
 	std::string sAnalysisData1;
@@ -748,7 +744,7 @@ std::string AssessBlocks(int nHeight, bool fCreatingContract)
 	// This dedicated area allows us to pay the unbanked each day *or* the researchers with collateral staked.
 	// (In contrast to paying the list of collateralized CPIDs).
 	std::string sCampaignName = "WCG";
-	BOOST_FOREACH(PAIRTYPE(std::string, Researcher) r, Researchers)
+    for (std::pair<std::string, Researcher> r : Researchers)
 	{
 		if (r.second.found && r.second.cpid.length() == 32)
 		{
@@ -834,8 +830,7 @@ std::string AssessBlocks(int nHeight, bool fCreatingContract)
 		double nCampaignPercentage = GetSporkDouble(sCampaignName + "campaignpercentage", 0);
 		if (nCampaignPercentage < 0) nCampaignPercentage = 0;
 		double nCampaignPoints = mCampaignPoints[sCampaignName];
-		if (fDebugSpam)
-			LogPrintf("\n SCS-AssessBlocks::Processing Campaign %s (%f), Payment Pctg [%f], TotalPoints %f ", 
+        LogPrintf("\n SCS-AssessBlocks::Processing Campaign %s (%f), Payment Pctg [%f], TotalPoints %f ",
 			myCampaign.first, myCampaign.second, nCampaignPercentage, nCampaignPoints);
 		nCampaignPoints += 1;
 		nTotalPoints += nCampaignPoints;
@@ -848,8 +843,7 @@ std::string AssessBlocks(int nHeight, bool fCreatingContract)
 			double nCap = GetProminenceCap(sCampaignName, mCPKCampaignPoints[sKey].nPoints, nPreProminence);
 			mCPKCampaignPoints[sKey].nProminence = nCap;
 
-			if (fDebugSpam)
-				LogPrintf("\nUser %s, Campaign %s, Points %f, Prominence %f ", mCPKCampaignPoints[sKey].sAddress, sCampaignName, 
+            LogPrintf("\nUser %s, Campaign %s, Points %f, Prominence %f ", mCPKCampaignPoints[sKey].sAddress, sCampaignName,
 				mCPKCampaignPoints[sKey].nPoints, mCPKCampaignPoints[sKey].nProminence);
 			std::string sLCN = sCampaignName == "WCG" && !Members.second.cpid.empty() ? sCampaignName + "-" + Members.second.cpid : sCampaignName;
 			std::string sRow = sLCN + "|" + Members.second.sAddress + "|" + RoundToString(mCPKCampaignPoints[sKey].nPoints, 0) + "|" 
@@ -1012,7 +1006,7 @@ std::string AssessBlocks(int nHeight, bool fCreatingContract)
 void DailyExport()
 {
 	// This procedure exports data to Stratis clients
-	double dDisableStratisExport = cdbl(GetArg("-disablestratisexport", "0"), 0);
+	double dDisableStratisExport = cdbl(gArgs.GetArg("-disablestratisexport", "0"), 0);
 	if (dDisableStratisExport == 1) 
 		return;
 	std::string sSuffix = fProd ? "_prod" : "_testnet";
@@ -1595,7 +1589,7 @@ std::string ExecuteGenericSmartContractQuorumProcess()
 	if (!ChainSynced(chainActive.Tip()))
 		return "CHAIN_NOT_SYNCED";
 	
-	int nFreq = (int)cdbl(GetArg("-dailygscfrequency", RoundToString(BLOCKS_PER_DAY, 0)), 0);
+	int nFreq = (int)cdbl(gArgs.GetArg("-dailygscfrequency", RoundToString(BLOCKS_PER_DAY, 0)), 0);
 	if (nFreq < 50)
 		nFreq = 50; 
 	// Send out GSCs at midpoint of each day:
@@ -1626,8 +1620,7 @@ std::string ExecuteGenericSmartContractQuorumProcess()
 	{
 		std::string sContr;
 		std::string sWatchman = WatchmanOnTheWall(false, sContr);
-		if (fDebugSpam)
-			LogPrintf("WatchmanOnTheWall::Status %s Contract %s", sWatchman, sContr);
+        LogPrintf("WatchmanOnTheWall::Status %s Contract %s", sWatchman, sContr);
 	}
 	bool fStratisExport = (chainActive.Tip()->nHeight % BLOCKS_PER_DAY == 0) && fMasternodeMode;
 	if (fStratisExport)

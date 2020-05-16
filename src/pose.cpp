@@ -5,7 +5,7 @@
 #include "net.h"
 #include "utilstrencodings.h"
 #include "utiltime.h"
-#include "masternode-sync.h"
+#include "masternode/masternode-sync.h"
 
 
 std::string GetSancStatus(const CDeterministicMNList& dmnList, const CDeterministicMNCPtr& dmn)
@@ -47,7 +47,7 @@ bool VerifyNode(std::string sNode)
 {
 	std::vector<CNodeStats> vstats;
 	g_connman->GetNodeStats(vstats);
-	BOOST_FOREACH(const CNodeStats& stats, vstats) 
+    for (const CNodeStats& stats : vstats)
 	{
 		if (stats.addr.ToString() == sNode)
 		{

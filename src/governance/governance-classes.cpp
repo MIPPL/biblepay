@@ -148,11 +148,9 @@ bool CGovernanceTriggerManager::AddNewTrigger(uint256 nHash)
 
 void CGovernanceTriggerManager::CleanAndRemove()
 {
-    if (fDebugSpam)
-		LogPrint("gobject", "CGovernanceTriggerManager::CleanAndRemove -- Start\n");
+    LogPrint(BCLog::GOBJECT, "CGovernanceTriggerManager::CleanAndRemove -- Start\n");
 
-	if (fDebugSpam)
-		DBG(std::cout << "CGovernanceTriggerManager::CleanAndRemove: Start" << std::endl;);
+	DBG(std::cout << "CGovernanceTriggerManager::CleanAndRemove: Start" << std::endl;);
     AssertLockHeld(governance.cs);
 
     // Remove triggers that are invalid or expired
@@ -226,8 +224,7 @@ std::vector<CSuperblock_sptr> CGovernanceTriggerManager::GetActiveTriggers()
     AssertLockHeld(governance.cs);
     std::vector<CSuperblock_sptr> vecResults;
 
-	if (fDebugSpam)
-		DBG(std::cout << "GetActiveTriggers: mapTrigger.size() = " << mapTrigger.size() << std::endl;);
+	DBG(std::cout << "GetActiveTriggers: mapTrigger.size() = " << mapTrigger.size() << std::endl;);
 
     // LOOK AT THESE OBJECTS AND COMPILE A VALID LIST OF TRIGGERS
     for (const auto& pair : mapTrigger) {
@@ -238,8 +235,7 @@ std::vector<CSuperblock_sptr> CGovernanceTriggerManager::GetActiveTriggers()
         }
     }
 
-	if (fDebugSpam)
-		DBG(std::cout << "GetActiveTriggers: vecResults.size() = " << vecResults.size() << std::endl;);
+	DBG(std::cout << "GetActiveTriggers: vecResults.size() = " << vecResults.size() << std::endl;);
 
     return vecResults;
 }
@@ -256,8 +252,7 @@ bool CSuperblockManager::IsSuperblockTriggered(int nBlockHeight)
     if (!CSuperblock::IsValidBlockHeight(nBlockHeight)) {
         return false;
     }
-    if (fDebugSpam)
-		LogPrint("gobject", "CSuperblockManager::IsSuperblockTriggered -- Start nBlockHeight = %d\n", nBlockHeight);
+    LogPrint(BCLog::GOBJECT, "CSuperblockManager::IsSuperblockTriggered -- Start nBlockHeight = %d\n", nBlockHeight);
 
     LOCK(governance.cs);
 	
@@ -325,7 +320,7 @@ bool CSuperblockManager::IsSuperblockTriggered(int nBlockHeight)
         }
 		else 
 		{
-            LogPrint("gobject", "CSuperblockManager::IsSuperblockTriggered -- fCacheFunding = false, continuing\n");
+            LogPrint(BCLog::GOBJECT, "CSuperblockManager::IsSuperblockTriggered -- fCacheFunding = false, continuing\n");
             DBG(std::cout << "IsSuperblockTriggered No fCachedFunding, continuing" << std::endl;);
         }
     }
@@ -341,8 +336,7 @@ bool CSuperblockManager::GetBestSuperblock(CSuperblock_sptr& pSuperblockRet, int
 {
     if (!CSuperblock::IsValidBlockHeight(nBlockHeight) && !CSuperblock::IsSmartContract(nBlockHeight)) 
 	{
-		if (fDebugSpam)
-			LogPrintf("**GetBestSuperblock::HEIGHT %f, Not a valid superblock height**", nBlockHeight);
+        LogPrintf("**GetBestSuperblock::HEIGHT %f, Not a valid superblock height**", nBlockHeight);
         return false;
     }
 
@@ -713,7 +707,7 @@ CAmount CSuperblock::GetPaymentsLimit(int nBlockHeight, bool fIncludeWhaleStakes
 	}
 	// End of Dynamic Whale Staking
 	
-    LogPrint("net", "CSuperblock::GetPaymentsLimit -- Valid superblock height %d, payments max %d \n", (double)nBlockHeight, (double)nPaymentsLimit/COIN);
+    LogPrint(BCLog::NET, "CSuperblock::GetPaymentsLimit -- Valid superblock height %d, payments max %d \n", (double)nBlockHeight, (double)nPaymentsLimit/COIN);
 	
     return nPaymentsLimit;
 }
@@ -935,7 +929,7 @@ bool CSuperblock::IsExpired() const
         CGovernanceObject* pgovobj = GetGovernanceObject();
         if (pgovobj) 
 		{
-            LogPrint("gobject", "CSuperblock::IsExpired -- Expiring outdated object: %s\n", pgovobj->GetHash().ToString());
+            LogPrint(BCLog::GOBJECT, "CSuperblock::IsExpired -- Expiring outdated object: %s\n", pgovobj->GetHash().ToString());
             pgovobj->fExpired = true;
             pgovobj->nDeletionTime = GetAdjustedTime();
         }

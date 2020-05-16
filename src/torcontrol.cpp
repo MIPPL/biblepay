@@ -202,8 +202,7 @@ bool TorControlConnection::Connect(const std::string &target, const ConnectionCB
     int connect_to_addrlen = sizeof(connect_to_addr);
     if (evutil_parse_sockaddr_port(target.c_str(),
         (struct sockaddr*)&connect_to_addr, &connect_to_addrlen)<0) {
-        if (fDebugSpam)
-			LogPrintf("tor: Error parsing socket address %s\n", target);
+        LogPrintf("tor: Error parsing socket address %s\n", target);
         return false;
     }
 

@@ -334,22 +334,12 @@ public:
         if (s.GetType() & SER_DISK) 
 		{
             // Only include these for the disk file format
-<<<<<<< HEAD:src/governance-object.h
-            if (fDebugSpam)
-				LogPrint("gobject", "CGovernanceObject::SerializationOp Reading/writing votes from/to disk\n");
-=======
             LogPrint(BCLog::GOBJECT, "CGovernanceObject::SerializationOp Reading/writing votes from/to disk\n");
->>>>>>> 351fbf65efc9459cb69a3c843cc205a8b94c95b3:src/governance/governance-object.h
             READWRITE(nDeletionTime);
             READWRITE(fExpired);
             READWRITE(mapCurrentMNVotes);
             READWRITE(fileVotes);
-<<<<<<< HEAD:src/governance-object.h
-            if (fDebugSpam)
-				LogPrint("gobject", "CGovernanceObject::SerializationOp hash = %s, vote count = %d\n", GetHash().ToString(), fileVotes.GetVoteCount());
-=======
             LogPrint(BCLog::GOBJECT, "CGovernanceObject::SerializationOp hash = %s, vote count = %d\n", GetHash().ToString(), fileVotes.GetVoteCount());
->>>>>>> 351fbf65efc9459cb69a3c843cc205a8b94c95b3:src/governance/governance-object.h
         }
 
         // AFTER DESERIALIZATION OCCURS, CACHED VARIABLES MUST BE CALCULATED MANUALLY

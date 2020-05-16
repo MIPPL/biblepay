@@ -1589,7 +1589,7 @@ bool AppInitMain(boost::thread_group& threadGroup, CScheduler& scheduler)
         LogPrintf("Startup time: %s\n", DateTimeStrFormat("%Y-%m-%d %H:%M:%S", GetTime()));
     LogPrintf("Default data directory %s\n", GetDefaultDataDir().string());
     LogPrintf("Using data directory %s\n", GetDataDir().string());
-    LogPrintf("Using config file %s\n", GetConfigFile(GetArg("-conf", GetConfFileName())).string());
+    LogPrintf("Using config file %s\n", GetConfigFile(gArgs.GetArg("-conf", GetConfFileName())).string());
     LogPrintf("Using at most %i automatic connections (%i file descriptors available)\n", nMaxConnections, nFD);
 
     InitSignatureCache();
@@ -1794,7 +1794,7 @@ bool AppInitMain(boost::thread_group& threadGroup, CScheduler& scheduler)
     // ********************************************************* Step 7a: check lite mode and load sporks
 
     // lite mode disables all DAC-specific functionality
-    fLiteMode = GetBoolArg("-litemode", false);
+    fLiteMode = gArgs.GetBoolArg("-litemode", false);
     LogPrintf("fLiteMode %d\n", fLiteMode);
 
     if(fLiteMode) {
@@ -1815,7 +1815,7 @@ bool AppInitMain(boost::thread_group& threadGroup, CScheduler& scheduler)
     }
 
     // DAC - Erase Chain
-    bool fEraseChain = GetBoolArg("-erasechain", false);
+    bool fEraseChain = gArgs.GetBoolArg("-erasechain", false);
     if (fEraseChain)
     {
         LogPrintf(" Killing blockchain files ... \n");
@@ -2119,7 +2119,7 @@ bool AppInitMain(boost::thread_group& threadGroup, CScheduler& scheduler)
 	// R Andrews; Apollon Support
 	if (fMasternodeMode || true)
 	{
-		msMasterNodeLegacyPrivKey = GetArg("-masternodeprivkey", "");
+		msMasterNodeLegacyPrivKey = gArgs.GetArg("-masternodeprivkey", "");
 		if (!msMasterNodeLegacyPrivKey.empty())
 		{
 			LogPrintf("\nSetting masternodeprivkey. %f", 1);
@@ -2129,7 +2129,7 @@ bool AppInitMain(boost::thread_group& threadGroup, CScheduler& scheduler)
     if(fMasternodeMode) {
         LogPrintf("MASTERNODE:\n");
 		
-        std::string strMasterNodeBLSPrivKey = GetArg("-masternodeblsprivkey", "");
+        std::string strMasterNodeBLSPrivKey = gArgs.GetArg("-masternodeblsprivkey", "");
         if(!strMasterNodeBLSPrivKey.empty()) {
             auto binKey = ParseHex(strMasterNodeBLSPrivKey);
             CBLSSecretKey keyOperator;
@@ -2397,7 +2397,7 @@ bool AppInitMain(boost::thread_group& threadGroup, CScheduler& scheduler)
     uiInterface.InitMessage(_("Starting Miner..."));
     
     // Generate coins - Proof-of-Bible-Hash (POBH) - in the background
-    GenerateCoins(GetBoolArg("-gen", false), GetArg("-genproclimit", 0), chainparams);
+    GenerateCoins=(gArgs.GetBoolArg("-gen", false), GetArg("-genproclimit", 0), chainparams);
 
     SetRPCWarmupFinished();
     uiInterface.InitMessage(_("Done loading"));

@@ -756,7 +756,7 @@ fs::path GetBackupsDir()
 
 boost::filesystem::path GetMasternodeConfigFile()
 {
-    boost::filesystem::path pathConfigFile(GetArg("-mnconf", "masternode.conf"));
+    boost::filesystem::path pathConfigFile(gArgs.GetArg("-mnconf", "masternode.conf"));
     if (!pathConfigFile.is_complete())
         pathConfigFile = GetDataDir() / pathConfigFile;
     return pathConfigFile;
@@ -764,7 +764,7 @@ boost::filesystem::path GetMasternodeConfigFile()
 
 boost::filesystem::path GetDeterministicConfigFile()
 {
-    boost::filesystem::path pathConfigFile(GetArg("-mndeterministicconf", "deterministic.conf"));
+    boost::filesystem::path pathConfigFile(gArgs.GetArg("-mndeterministicconf", "deterministic.conf"));
     if (!pathConfigFile.is_complete())
         pathConfigFile = GetDataDir() / pathConfigFile;
     return pathConfigFile;
@@ -1025,8 +1025,7 @@ void RenameThread(const char* name)
     // Prevent warnings for unused parameters...
     (void)name;
 #endif
-	if (fDebugSpam)
-		LogPrintf("%s: thread new name %s\n", __func__, name);
+	LogPrintf("%s: thread new name %s\n", __func__, name);
 }
 
 std::string GetThreadName()

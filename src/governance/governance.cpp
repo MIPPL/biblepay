@@ -281,8 +281,7 @@ void CGovernanceManager::CheckOrphanVotes(CGovernanceObject& govobj, CGovernance
 
 void CGovernanceManager::AddGovernanceObject(CGovernanceObject& govobj, CConnman& connman, CNode* pfrom)
 {
-	if (fDebugSpam)
-		DBG(std::cout << "CGovernanceManager::AddGovernanceObject START" << std::endl;);
+	DBG(std::cout << "CGovernanceManager::AddGovernanceObject START" << std::endl;);
 
     uint256 nHash = govobj.GetHash();
     std::string strHash = nHash.ToString();
@@ -309,8 +308,7 @@ void CGovernanceManager::AddGovernanceObject(CGovernanceObject& govobj, CConnman
 
     if (!objpair.second) 
 	{
-		if (fDebugSpam)
-			LogPrintf("CGovernanceManager::AddGovernanceObject -- already have governance object %s\n", nHash.ToString());
+        LogPrintf("CGovernanceManager::AddGovernanceObject -- already have governance object %s\n", nHash.ToString());
         return;
     }
 
@@ -402,8 +400,7 @@ void CGovernanceManager::UpdateCachesAndClean()
 
         if ((pObj->IsSetCachedDelete() || pObj->IsSetExpired()) &&
             (nTimeSinceDeletion >= GOVERNANCE_DELETION_DELAY)) {
-            if (fDebugSpam)
-				LogPrintf("CGovernanceManager::UpdateCachesAndClean -- erase obj %s\n", (*it).first.ToString());
+            LogPrintf("CGovernanceManager::UpdateCachesAndClean -- erase obj %s\n", (*it).first.ToString());
             mmetaman.RemoveGovernanceObject(pObj->GetHash());
 
             // Remove vote references
@@ -456,8 +453,7 @@ void CGovernanceManager::UpdateCachesAndClean()
         }
     }
 
-	if (fDebugSpam)
-		LogPrintf("CGovernanceManager::UpdateCachesAndClean -- %s\n", ToString());
+	LogPrintf("CGovernanceManager::UpdateCachesAndClean -- %s\n", ToString());
 }
 
 CGovernanceObject* CGovernanceManager::FindGovernanceObject(const uint256& nHash)
@@ -1133,8 +1129,7 @@ void CGovernanceManager::InitOnLoad()
 {
     LOCK(cs);
     int64_t nStart = GetTimeMillis();
-	if (fDebugSpam)
-		LogPrintf("Preparing masternode indexes and governance triggers...\n");
+	LogPrintf("Preparing masternode indexes and governance triggers...\n");
     RebuildIndexes();
     AddCachedTriggers();
     LogPrintf("Masternode indexes and governance triggers prepared  %dms\n", GetTimeMillis() - nStart);

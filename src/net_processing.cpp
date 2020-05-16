@@ -354,7 +354,7 @@ void FinalizeNode(NodeId nodeid, bool& fUpdateConnectionTime) {
         fUpdateConnectionTime = true;
     }
 
-    BOOST_FOREACH(const QueuedBlock& entry, state->vBlocksInFlight) {
+    for (const QueuedBlock& entry : state->vBlocksInFlight) {
         mapBlocksInFlight.erase(entry.hash);
     }
     EraseOrphansFor(nodeid);

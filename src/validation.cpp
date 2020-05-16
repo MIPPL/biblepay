@@ -2,7 +2,6 @@
 // Copyright (c) 2009-2015 The Bitcoin Core developers
 // Copyright (c) 2014-2020 The Dash Core developers
 // Copyright (c) 2017-2020 The DAC Core developers
->>>>>>> 351fbf65efc9459cb69a3c843cc205a8b94c95b3
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -55,7 +54,7 @@
 #include "evo/providertx.h"
 #include "evo/deterministicmns.h"
 #include "evo/cbtx.h"
-#include "governance-classes.h" // For superblock Height
+#include "governance/governance-classes.h" // For superblock Height
 #include "llmq/quorums_instantsend.h"	
 #include "llmq/quorums_chainlocks.h"
 
@@ -2436,8 +2435,7 @@ static bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockInd
 	{
 		MemorizeBlockChainPrayers(true, false, false, false);
 		std::string sStatus = ExecuteGenericSmartContractQuorumProcess();
-		if (fDebugSpam)
-			LogPrintf("EGSCQP %f %s", (double)pindex->nHeight, sStatus);
+        LogPrintf("EGSCQP %f %s", (double)pindex->nHeight, sStatus);
 	}
 	// END DAC
 
@@ -3697,8 +3695,7 @@ static bool ContextualCheckBlock(const CBlock& block, CValidationState& state, c
 					bool fFound = Contains(sPoolList, sRecip);
 					if (!fFound)
 					{
-						if (fDebugSpam)
-							LogPrintf("\nContextualCheckBlock::Check_RX_Pool_Recipients::ERROR, Block Height %f, Block rejected: Block with prior difficulty %f [Threshhold=%f] and Recipient %s is not in our pool list %s", 
+                        LogPrintf("\nContextualCheckBlock::Check_RX_Pool_Recipients::ERROR, Block Height %f, Block rejected: Block with prior difficulty %f [Threshhold=%f] and Recipient %s is not in our pool list %s", 
 									nHeight, nDiff, nMinRXDiff, sRecip, sPoolList);
 						return false; 
 					}

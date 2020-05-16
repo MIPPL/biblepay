@@ -2,14 +2,14 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "activemasternode.h"
+#include "masternode/activemasternode.h"
 #include "base58.h"
 #include "clientversion.h"
 #include "init.h"
 #include "netbase.h"
 #include "masternode.h"
-#include "masternode-payments.h"
-#include "masternode-sync.h"
+#include "masternode/masternode-payments.h"
+#include "masternode/masternode-sync.h"
 #include "masternodeman.h"
 #include "messagesigner.h"
 #include "script/standard.h"
@@ -148,8 +148,7 @@ void CMasternode::Check(bool fForce)
     if(!fForce && (GetTime() - nTimeLastChecked < MASTERNODE_CHECK_SECONDS)) return;
     nTimeLastChecked = GetTime();
 
-	if (fDebugSpam)
-		LogPrint("masternode", "CMasternode::Check -- Masternode %s is in %s state\n", outpoint.ToStringShort(), GetStateString());
+	LogPrint(BCLog::MASTERNODE, "CMasternode::Check -- Masternode %s is in %s state\n", outpoint.ToStringShort(), GetStateString());
 
     //once spent, stop doing the checks
     if(IsOutpointSpent()) return;
@@ -159,8 +158,7 @@ void CMasternode::Check(bool fForce)
         Coin coin;
         if(!GetUTXOCoin(outpoint, coin)) {
             nActiveState = MASTERNODE_OUTPOINT_SPENT;
-			if (fDebugSpam)
-				LogPrint("masternode", "CMasternode::Check -- Failed to find Masternode UTXO, masternode=%s\n", outpoint.ToStringShort());
+            LogPrint(BCLog::MASTERNODE, "CMasternode::Check -- Failed to find Masternode UTXO, masternode=%s\n", outpoint.ToStringShort());
             return;
         }
 
@@ -194,8 +192,7 @@ void CMasternode::Check(bool fForce)
         nActiveState = MASTERNODE_UPDATE_REQUIRED;
         if(nActiveStatePrev != nActiveState) 
 		{
-            if (fDebugSpam)
-				LogPrint("masternode", "CMasternode::Check -- Masternode %s is in %s state now\n", outpoint.ToStringShort(), GetStateString());
+            LogPrint(BCLog::MASTERNODE, "CMasternode::Check -- Masternode %s is in %s state now\n", outpoint.ToStringShort(), GetStateString());
         }
         return;
     }
@@ -207,8 +204,7 @@ void CMasternode::Check(bool fForce)
         // ...but if it was already expired before the initial check - return right away
         if(IsExpired() || IsSentinelPingExpired() || IsNewStartRequired()) 
 		{
-            if (fDebugSpam)
-				LogPrint("masternode", "CMasternode::Check -- Masternode %s is in %s state, waiting for ping\n", outpoint.ToStringShort(), GetStateString());
+            LogPrint(BCLog::MASTERNODE, "CMasternode::Check -- Masternode %s is in %s state, waiting for ping\n", outpoint.ToStringShort(), GetStateString());
             return;
         }
     }
@@ -221,8 +217,7 @@ void CMasternode::Check(bool fForce)
         if(!IsPingedWithin(MASTERNODE_NEW_START_REQUIRED_SECONDS)) {
             nActiveState = MASTERNODE_NEW_START_REQUIRED;
             if(nActiveStatePrev != nActiveState) {
-                if (fDebugSpam)
-					LogPrint("masternode", "CMasternode::Check -- Masternode %s is in %s state now\n", outpoint.ToStringShort(), GetStateString());
+                LogPrint(BCLog::MASTERNODE, "CMasternode::Check -- Masternode %s is in %s state now\n", outpoint.ToStringShort(), GetStateString());
             }
             return;
         }
@@ -230,8 +225,7 @@ void CMasternode::Check(bool fForce)
         if(!IsPingedWithin(MASTERNODE_EXPIRATION_SECONDS)) {
             nActiveState = MASTERNODE_EXPIRED;
             if(nActiveStatePrev != nActiveState) {
-                if (fDebugSpam)
-					LogPrint("masternode", "CMasternode::Check -- Masternode %s is in %s state now\n", outpoint.ToStringShort(), GetStateString());
+                LogPrint(BCLog::MASTERNODE, "CMasternode::Check -- Masternode %s is in %s state now\n", outpoint.ToStringShort(), GetStateString());
             }
             return;
         }
@@ -239,15 +233,13 @@ void CMasternode::Check(bool fForce)
         // part 1: expire based on dacd ping
         bool fSentinelPingActive = masternodeSync.IsSynced() && mnodeman.IsSentinelPingActive();
         bool fSentinelPingExpired = fSentinelPingActive && !IsPingedWithin(MASTERNODE_SENTINEL_PING_MAX_SECONDS);
-		if (fDebugSpam)
-			LogPrint("masternode", "CMasternode::Check -- outpoint=%s, GetAdjustedTime()=%d, fSentinelPingExpired=%d\n",
+        LogPrint(BCLog::MASTERNODE, "CMasternode::Check -- outpoint=%s, GetAdjustedTime()=%d, fSentinelPingExpired=%d\n",
                 outpoint.ToStringShort(), GetAdjustedTime(), fSentinelPingExpired);
 
         if(fSentinelPingExpired) {
             nActiveState = MASTERNODE_SENTINEL_PING_EXPIRED;
             if(nActiveStatePrev != nActiveState) {
-                if (fDebugSpam)
-					LogPrint("masternode", "CMasternode::Check -- Masternode %s is in %s state now\n", outpoint.ToStringShort(), GetStateString());
+                LogPrint(BCLog::MASTERNODE, "CMasternode::Check -- Masternode %s is in %s state now\n", outpoint.ToStringShort(), GetStateString());
             }
             return;
         }
@@ -259,8 +251,7 @@ void CMasternode::Check(bool fForce)
         if (lastPing.sigTime - sigTime < MASTERNODE_MIN_MNP_SECONDS) {
             nActiveState = MASTERNODE_PRE_ENABLED;
             if (nActiveStatePrev != nActiveState) {
-                if (fDebugSpam)
-					LogPrint("masternode", "CMasternode::Check -- Masternode %s is in %s state now\n", outpoint.ToStringShort(), GetStateString());
+                LogPrint(BCLog::MASTERNODE, "CMasternode::Check -- Masternode %s is in %s state now\n", outpoint.ToStringShort(), GetStateString());
             }
             return;
         }
@@ -271,15 +262,13 @@ void CMasternode::Check(bool fForce)
         bool fSentinelPingActive = masternodeSync.IsSynced() && mnodeman.IsSentinelPingActive();
         bool fSentinelPingExpired = fSentinelPingActive && !lastPing.fSentinelIsCurrent;
 
-		if (fDebugSpam)
-			LogPrint("masternode", "CMasternode::Check -- outpoint=%s, GetAdjustedTime()=%d, fSentinelPingExpired=%d\n",
+        LogPrint(BCLog::MASTERNODE, "CMasternode::Check -- outpoint=%s, GetAdjustedTime()=%d, fSentinelPingExpired=%d\n",
                 outpoint.ToStringShort(), GetAdjustedTime(), fSentinelPingExpired);
 
         if(fSentinelPingExpired) {
             nActiveState = MASTERNODE_SENTINEL_PING_EXPIRED;
             if(nActiveStatePrev != nActiveState) {
-				if (fDebugSpam)
-					LogPrint("masternode", "CMasternode::Check -- Masternode %s is in %s state now\n", outpoint.ToStringShort(), GetStateString());
+                LogPrint(BCLog::MASTERNODE, "CMasternode::Check -- Masternode %s is in %s state now\n", outpoint.ToStringShort(), GetStateString());
             }
             return;
         }
@@ -287,8 +276,7 @@ void CMasternode::Check(bool fForce)
 
     nActiveState = MASTERNODE_ENABLED; // OK
     if(nActiveStatePrev != nActiveState) {
-        if (fDebugSpam)
-			LogPrint("masternode", "CMasternode::Check -- Masternode %s is in %s state now\n", outpoint.ToStringShort(), GetStateString());
+        LogPrint(BCLog::MASTERNODE, "CMasternode::Check -- Masternode %s is in %s state now\n", outpoint.ToStringShort(), GetStateString());
     }
 }
 
@@ -348,11 +336,11 @@ void CMasternode::UpdateLastPaid(const CBlockIndex *pindex, int nMaxBlocksToScan
     if (deterministicMNManager->IsDeterministicMNsSporkActive(pindex->nHeight)) {
         auto dmn = deterministicMNManager->GetListForBlock(pindex->GetBlockHash()).GetMNByCollateral(outpoint);
         if (!dmn || dmn->pdmnState->nLastPaidHeight == -1) {
-            LogPrint("masternode", "CMasternode::UpdateLastPaidBlock -- searching for block with payment to %s -- not found\n", outpoint.ToStringShort());
+            LogPrint(BCLog::MASTERNODE, "CMasternode::UpdateLastPaidBlock -- searching for block with payment to %s -- not found\n", outpoint.ToStringShort());
         } else {
             nBlockLastPaid = (int)dmn->pdmnState->nLastPaidHeight;
             nTimeLastPaid = chainActive[nBlockLastPaid]->nTime;
-            LogPrint("masternode", "CMasternode::UpdateLastPaidBlock -- searching for block with payment to %s -- found new %d\n", outpoint.ToStringShort(), nBlockLastPaid);
+            LogPrint(BCLog::MASTERNODE, "CMasternode::UpdateLastPaidBlock -- searching for block with payment to %s -- found new %d\n", outpoint.ToStringShort(), nBlockLastPaid);
         }
         return;
     }
@@ -360,7 +348,7 @@ void CMasternode::UpdateLastPaid(const CBlockIndex *pindex, int nMaxBlocksToScan
     const CBlockIndex *BlockReading = pindex;
 
     CScript mnpayee = GetScriptForDestination(keyIDCollateralAddress);
-    // LogPrint("mnpayments", "CMasternode::UpdateLastPaidBlock -- searching for block with payment to %s\n", outpoint.ToStringShort());
+    // LogPrint(BCLog::MNPAYMENTS, "CMasternode::UpdateLastPaidBlock -- searching for block with payment to %s\n", outpoint.ToStringShort());
 
     LOCK(cs_mapMasternodeBlocks);
 
@@ -378,7 +366,7 @@ void CMasternode::UpdateLastPaid(const CBlockIndex *pindex, int nMaxBlocksToScan
                 if(mnpayee == txout.scriptPubKey && nMasternodePayment == txout.nValue) {
                     nBlockLastPaid = BlockReading->nHeight;
                     nTimeLastPaid = BlockReading->nTime;
-                    LogPrint("mnpayments", "CMasternode::UpdateLastPaidBlock -- searching for block with payment to %s -- found new %d\n", outpoint.ToStringShort(), nBlockLastPaid);
+                    LogPrint(BCLog::MNPAYMENTS, "CMasternode::UpdateLastPaidBlock -- searching for block with payment to %s -- found new %d\n", outpoint.ToStringShort(), nBlockLastPaid);
                     return;
                 }
         }
@@ -389,7 +377,7 @@ void CMasternode::UpdateLastPaid(const CBlockIndex *pindex, int nMaxBlocksToScan
 
     // Last payment for this masternode wasn't found in latest mnpayments blocks
     // or it was found in mnpayments blocks but wasn't found in the blockchain.
-    // LogPrint("mnpayments", "CMasternode::UpdateLastPaidBlock -- searching for block with payment to %s -- keeping old %d\n", outpoint.ToStringShort(), nBlockLastPaid);
+    // LogPrint(BCLog::MNPAYMENTS, "CMasternode::UpdateLastPaidBlock -- searching for block with payment to %s -- keeping old %d\n", outpoint.ToStringShort(), nBlockLastPaid);
 }
 
 #ifdef ENABLE_WALLET
@@ -440,7 +428,7 @@ bool CMasternodeBroadcast::Create(const COutPoint& outpoint, const CService& ser
     // wait for reindex and/or import to finish
     if (fImporting || fReindex) return false;
 
-    LogPrint("masternode", "CMasternodeBroadcast::Create -- pubKeyCollateralAddressNew = %s, keyIDOperator = %s\n",
+    LogPrint(BCLog::MASTERNODE, "CMasternodeBroadcast::Create -- pubKeyCollateralAddressNew = %s, keyIDOperator = %s\n",
              CBitcoinAddress(pubKeyCollateralAddressNew.GetID()).ToString(),
              pubKeyMasternodeNew.GetID().ToString());
 
@@ -478,8 +466,7 @@ bool CMasternodeBroadcast::SimpleCheck(int& nDos)
     // make sure addr is valid
     if(!IsValidNetAddr()) 
 	{
-        if (fDebugSpam)
-			LogPrintf("CMasternodeBroadcast::SimpleCheck -- Invalid addr, rejected: masternode=%s  addr=%s\n",
+        LogPrintf("CMasternodeBroadcast::SimpleCheck -- Invalid addr, rejected: masternode=%s  addr=%s\n",
                     outpoint.ToStringShort(), addr.ToString());
         return false;
     }
@@ -487,8 +474,7 @@ bool CMasternodeBroadcast::SimpleCheck(int& nDos)
     // make sure signature isn't in the future (past is OK)
     if (sigTime > GetAdjustedTime() + 60 * 60) 
 	{
-        if (fDebugSpam)
-			LogPrintf("CMasternodeBroadcast::SimpleCheck -- Signature rejected, too far into the future: masternode=%s\n", outpoint.ToStringShort());
+        LogPrintf("CMasternodeBroadcast::SimpleCheck -- Signature rejected, too far into the future: masternode=%s\n", outpoint.ToStringShort());
         nDos = 1;
         return false;
     }
@@ -500,8 +486,7 @@ bool CMasternodeBroadcast::SimpleCheck(int& nDos)
     }
 
     if(nProtocolVersion < mnpayments.GetMinMasternodePaymentsProto()) {
-        if (fDebugSpam)
-			LogPrintf("CMasternodeBroadcast::SimpleCheck -- outdated Masternode: masternode=%s  nProtocolVersion=%d\n", outpoint.ToStringShort(), nProtocolVersion);
+        LogPrintf("CMasternodeBroadcast::SimpleCheck -- outdated Masternode: masternode=%s  nProtocolVersion=%d\n", outpoint.ToStringShort(), nProtocolVersion);
         nActiveState = MASTERNODE_UPDATE_REQUIRED;
     }
 
@@ -509,8 +494,7 @@ bool CMasternodeBroadcast::SimpleCheck(int& nDos)
     pubkeyScript = GetScriptForDestination(keyIDCollateralAddress);
 
     if(pubkeyScript.size() != 25) {
-        if (fDebugSpam)
-			LogPrintf("CMasternodeBroadcast::SimpleCheck -- keyIDCollateralAddress has the wrong size\n");
+        LogPrintf("CMasternodeBroadcast::SimpleCheck -- keyIDCollateralAddress has the wrong size\n");
         nDos = 100;
         return false;
     }
@@ -519,8 +503,7 @@ bool CMasternodeBroadcast::SimpleCheck(int& nDos)
     pubkeyScript2 = GetScriptForDestination(legacyKeyIDOperator);
 
     if(pubkeyScript2.size() != 25) {
-        if (fDebugSpam)
-			LogPrintf("CMasternodeBroadcast::SimpleCheck -- keyIDOperator has the wrong size\n");
+        LogPrintf("CMasternodeBroadcast::SimpleCheck -- keyIDOperator has the wrong size\n");
         nDos = 100;
         return false;
     }
@@ -580,8 +563,7 @@ bool CMasternodeBroadcast::Update(CMasternode* pmn, int& nDos, CConnman& connman
     // if ther was no masternode broadcast recently or if it matches our Masternode privkey...
     if(!pmn->IsBroadcastedWithin(MASTERNODE_MIN_MNB_SECONDS) || (fMasternodeMode && legacyKeyIDOperator == activeMasternodeInfo.legacyKeyIDOperator)) {
         // take the newest entry
-		if (fDebugSpam)
-			LogPrintf("CMasternodeBroadcast::Update -- Got UPDATED Masternode entry: addr=%s\n", addr.ToString());
+        LogPrintf("CMasternodeBroadcast::Update -- Got UPDATED Masternode entry: addr=%s\n", addr.ToString());
         if(pmn->UpdateFromNewBroadcast(*this, connman)) {
             pmn->Check();
             Relay(connman);
@@ -605,18 +587,18 @@ bool CMasternodeBroadcast::CheckOutpoint(int& nDos)
     int nHeight;
     CollateralStatus err = CheckCollateral(outpoint, keyIDCollateralAddress, nHeight);
     if (err == COLLATERAL_UTXO_NOT_FOUND) {
-        LogPrint("masternode", "CMasternodeBroadcast::CheckOutpoint -- Failed to find Masternode UTXO, masternode=%s\n", outpoint.ToStringShort());
+        LogPrint(BCLog::MASTERNODE, "CMasternodeBroadcast::CheckOutpoint -- Failed to find Masternode UTXO, masternode=%s\n", outpoint.ToStringShort());
         return false;
     }
 
     if (err == COLLATERAL_INVALID_AMOUNT) {
-        LogPrint("masternode", "CMasternodeBroadcast::CheckOutpoint -- Masternode UTXO should have SANCTUARY_COLLATERAL, masternode=%s\n", outpoint.ToStringShort());
+        LogPrint(BCLog::MASTERNODE, "CMasternodeBroadcast::CheckOutpoint -- Masternode UTXO should have SANCTUARY_COLLATERAL, masternode=%s\n", outpoint.ToStringShort());
         nDos = 33;
         return false;
     }
 
     if(err == COLLATERAL_INVALID_PUBKEY) {
-        LogPrint("masternode", "CMasternodeBroadcast::CheckOutpoint -- Masternode UTXO should match keyIDCollateralAddress, masternode=%s\n", outpoint.ToStringShort());
+        LogPrint(BCLog::MASTERNODE, "CMasternodeBroadcast::CheckOutpoint -- Masternode UTXO should match keyIDCollateralAddress, masternode=%s\n", outpoint.ToStringShort());
         nDos = 33;
         return false;
     }
@@ -630,7 +612,7 @@ bool CMasternodeBroadcast::CheckOutpoint(int& nDos)
         return false;
     }
 
-    LogPrint("masternode", "CMasternodeBroadcast::CheckOutpoint -- Masternode UTXO verified\n");
+    LogPrint(BCLog::MASTERNODE, "CMasternodeBroadcast::CheckOutpoint -- Masternode UTXO verified\n");
 
     // Verify that sig time is legit, should be at least not earlier than the timestamp of the block
     // at which collateral became nMasternodeMinimumConfirmations blocks deep.
@@ -754,8 +736,7 @@ void CMasternodeBroadcast::Relay(CConnman& connman) const
 {
     // Do not relay until fully synced
     if(!masternodeSync.IsSynced()) {
-		if (fDebugSpam)
-			LogPrint("masternode", "CMasternodeBroadcast::Relay -- won't relay until fully synced\n");
+        LogPrint(BCLog::MASTERNODE, "CMasternodeBroadcast::Relay -- won't relay until fully synced\n");
         return;
     }
 
@@ -884,16 +865,14 @@ bool CMasternodePing::SimpleCheck(int& nDos)
         BlockMap::iterator mi = mapBlockIndex.find(blockHash);
         if (mi == mapBlockIndex.end()) 
 		{
-            if (fDebugSpam)
-				LogPrint("masternode", "CMasternodePing::SimpleCheck -- Masternode ping is invalid, unknown block hash: masternode=%s blockHash=%s\n", masternodeOutpoint.ToStringShort(), blockHash.ToString());
+            LogPrint(BCLog::MASTERNODE, "CMasternodePing::SimpleCheck -- Masternode ping is invalid, unknown block hash: masternode=%s blockHash=%s\n", masternodeOutpoint.ToStringShort(), blockHash.ToString());
             // maybe we stuck or forked so we shouldn't ban this node, just fail to accept this ping
             // TODO: or should we also request this block?
             return false;
         }
     }
 
-    if (fDebugSpam)
-		LogPrint("masternode", "CMasternodePing::SimpleCheck -- Masternode ping verified: masternode=%s  blockHash=%s  sigTime=%d\n", masternodeOutpoint.ToStringShort(), blockHash.ToString(), sigTime);
+    LogPrint(BCLog::MASTERNODE, "CMasternodePing::SimpleCheck -- Masternode ping verified: masternode=%s  blockHash=%s  sigTime=%d\n", masternodeOutpoint.ToStringShort(), blockHash.ToString(), sigTime);
     return true;
 }
 
@@ -910,23 +889,20 @@ bool CMasternodePing::CheckAndUpdate(CMasternode* pmn, bool fFromNewBroadcast, i
 
     if (pmn == nullptr) 
 	{
-        if (fDebugSpam)
-			LogPrint("masternode", "CMasternodePing::CheckAndUpdate -- Couldn't find Masternode entry, masternode=%s\n", masternodeOutpoint.ToStringShort());
+        LogPrint(BCLog::MASTERNODE, "CMasternodePing::CheckAndUpdate -- Couldn't find Masternode entry, masternode=%s\n", masternodeOutpoint.ToStringShort());
         return false;
     }
 
     if(!fFromNewBroadcast) {
         if (pmn->IsUpdateRequired()) 
 		{
-            if (fDebugSpam)
-				LogPrint("masternode", "CMasternodePing::CheckAndUpdate -- masternode protocol is outdated, masternode=%s\n", masternodeOutpoint.ToStringShort());
+            LogPrint(BCLog::MASTERNODE, "CMasternodePing::CheckAndUpdate -- masternode protocol is outdated, masternode=%s\n", masternodeOutpoint.ToStringShort());
             return false;
         }
 
         if (pmn->IsNewStartRequired()) 
 		{
-            if (fDebugSpam)
-				LogPrint("masternode", "CMasternodePing::CheckAndUpdate -- masternode is completely expired, new start is required, masternode=%s\n", masternodeOutpoint.ToStringShort());
+            LogPrint(BCLog::MASTERNODE, "CMasternodePing::CheckAndUpdate -- masternode is completely expired, new start is required, masternode=%s\n", masternodeOutpoint.ToStringShort());
             return false;
         }
     }
@@ -935,23 +911,20 @@ bool CMasternodePing::CheckAndUpdate(CMasternode* pmn, bool fFromNewBroadcast, i
         BlockMap::iterator mi = mapBlockIndex.find(blockHash);
         if ((*mi).second && (*mi).second->nHeight < chainActive.Height() - 24) 
 		{
-			if (fDebugSpam)
-				LogPrintf("CMasternodePing::CheckAndUpdate -- Masternode ping is invalid, block hash is too old: masternode=%s  blockHash=%s\n", masternodeOutpoint.ToStringShort(), blockHash.ToString());
+            LogPrintf("CMasternodePing::CheckAndUpdate -- Masternode ping is invalid, block hash is too old: masternode=%s  blockHash=%s\n", masternodeOutpoint.ToStringShort(), blockHash.ToString());
             // nDos = 1;
             return false;
         }
     }
 
-	if (fDebugSpam)
-		LogPrint("masternode", "CMasternodePing::CheckAndUpdate -- New ping: masternode=%s  blockHash=%s  sigTime=%d\n", masternodeOutpoint.ToStringShort(), blockHash.ToString(), sigTime);
+	LogPrint(BCLog::MASTERNODE, "CMasternodePing::CheckAndUpdate -- New ping: masternode=%s  blockHash=%s  sigTime=%d\n", masternodeOutpoint.ToStringShort(), blockHash.ToString(), sigTime);
 
     // LogPrintf("mnping - Found corresponding mn for outpoint: %s\n", masternodeOutpoint.ToStringShort());
     // update only if there is no known ping for this masternode or
     // last ping was more then MASTERNODE_MIN_MNP_SECONDS-60 ago comparing to this one
     if (pmn->IsPingedWithin(MASTERNODE_MIN_MNP_SECONDS - 60, sigTime)) 
 	{
-        if (fDebugSpam)
-			LogPrint("masternode", "CMasternodePing::CheckAndUpdate -- Masternode ping arrived too early, masternode=%s\n", masternodeOutpoint.ToStringShort());
+        LogPrint(BCLog::MASTERNODE, "CMasternodePing::CheckAndUpdate -- Masternode ping arrived too early, masternode=%s\n", masternodeOutpoint.ToStringShort());
         //nDos = 1; //disable, this is happening frequently and causing banned peers
         return false;
     }
@@ -965,14 +938,12 @@ bool CMasternodePing::CheckAndUpdate(CMasternode* pmn, bool fFromNewBroadcast, i
     if(!masternodeSync.IsMasternodeListSynced() && !pmn->IsPingedWithin(MASTERNODE_EXPIRATION_SECONDS/2)) 
 	{
         // let's bump sync timeout
-		if (fDebugSpam)
-			LogPrint("masternode", "CMasternodePing::CheckAndUpdate -- bumping sync timeout, masternode=%s\n", masternodeOutpoint.ToStringShort());
+        LogPrint(BCLog::MASTERNODE, "CMasternodePing::CheckAndUpdate -- bumping sync timeout, masternode=%s\n", masternodeOutpoint.ToStringShort());
         masternodeSync.BumpAssetLastTime("CMasternodePing::CheckAndUpdate");
     }
 
     // let's store this ping as the last one
-	if (fDebugSpam)
-		LogPrint("masternode", "CMasternodePing::CheckAndUpdate -- Masternode ping accepted, masternode=%s\n", masternodeOutpoint.ToStringShort());
+	LogPrint(BCLog::MASTERNODE, "CMasternodePing::CheckAndUpdate -- Masternode ping accepted, masternode=%s\n", masternodeOutpoint.ToStringShort());
     pmn->lastPing = *this;
 
     // and update mnodeman.mapSeenMasternodeBroadcast.lastPing which is probably outdated
@@ -987,8 +958,7 @@ bool CMasternodePing::CheckAndUpdate(CMasternode* pmn, bool fFromNewBroadcast, i
     // relay ping for nodes in ENABLED/EXPIRED/SENTINEL_PING_EXPIRED state only, skip everyone else
     if (!pmn->IsEnabled() && !pmn->IsExpired() && !pmn->IsSentinelPingExpired()) return false;
 
-	if (fDebugSpam)
-		LogPrint("masternode", "CMasternodePing::CheckAndUpdate -- Masternode ping acceepted and relayed, masternode=%s\n", masternodeOutpoint.ToStringShort());
+	LogPrint(BCLog::MASTERNODE, "CMasternodePing::CheckAndUpdate -- Masternode ping acceepted and relayed, masternode=%s\n", masternodeOutpoint.ToStringShort());
     Relay(connman);
 
     return true;
@@ -999,8 +969,7 @@ void CMasternodePing::Relay(CConnman& connman)
     // Do not relay until fully synced
     if(!masternodeSync.IsSynced()) 
 	{
-		if (fDebugSpam)
-			LogPrint("masternode", "CMasternodePing::Relay -- won't relay until fully synced\n");
+        LogPrint(BCLog::MASTERNODE, "CMasternodePing::Relay -- won't relay until fully synced\n");
         return;
     }
 

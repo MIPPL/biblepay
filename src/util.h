@@ -136,7 +136,13 @@ namespace BCLog {
         COINDB      = (1 << 18),
         QT          = (1 << 19),
         LEVELDB     = (1 << 20),
-
+        
+        // start DAC
+        MINER       = (1 << 28),
+        MASTERNODE  = (1 << 29),
+        ALERT       = (1 << 30),
+        // end DAC
+        
         //Start Dash
         CHAINLOCKS  = ((uint64_t)1 << 32),
         GOBJECT     = ((uint64_t)1 << 33),

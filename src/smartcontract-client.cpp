@@ -9,11 +9,11 @@
 #include "rpcpodc.h"
 #include "rpcpog.h"
 #include "init.h"
-#include "activemasternode.h"
-#include "governance-classes.h"
-#include "governance.h"
-#include "masternode-sync.h"
-#include "masternode-payments.h"
+#include "masternode/activemasternode.h"
+#include "governance/governance-classes.h"
+#include "governance/governance.h"
+#include "masternode/masternode-sync.h"
+#include "masternode/masternode-payments.h"
 #include "masternodeconfig.h"
 #include "messagesigner.h"
 #include <boost/lexical_cast.hpp>
@@ -293,7 +293,7 @@ CWalletTx CreateGSCClientTransmission(std::string sCampaign, std::string sDiary,
 	// R ANDREWS - Split change into 10 Bankroll Denominations - this makes smaller amounts available for ABNs
 	double nMinRequiredABNWeight = GetSporkDouble("requiredabnweight", 0);
 	bool fSubtractFeeFromAmount = true;
-	double dChangeQty = cdbl(GetArg("-changequantity", "10"), 2);
+	double dChangeQty = cdbl(gArgs.GetArg("-changequantity", "10"), 2);
 	if (dChangeQty < 01) dChangeQty = 1;
 	if (dChangeQty > 50) dChangeQty = 50;
 
@@ -350,7 +350,7 @@ CWalletTx CreateGSCClientTransmission(std::string sCampaign, std::string sDiary,
 double UserSetting(std::string sName, double dDefault)
 {
 	boost::to_lower(sName);
-	double dConfigSetting = cdbl(GetArg("-" + sName, "0"), 4);
+	double dConfigSetting = cdbl(gArgs.GetArg("-" + sName, "0"), 4);
 	if (dConfigSetting == 0) 
 		dConfigSetting = dDefault;
 	return dConfigSetting;

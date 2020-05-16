@@ -99,7 +99,6 @@ static QList<QString> savedPaymentRequests;
 
 static void ReportInvalidCertificate(const QSslCertificate& cert)
 {
-	if (fDebugSpam)
 	{
 #if QT_VERSION < 0x050000
     qDebug() << QString("%1: Payment server found an invalid certificate: ").arg(__func__) << cert.serialNumber() << cert.subjectInfo(QSslCertificate::CommonName) << cert.subjectInfo(QSslCertificate::OrganizationalUnitName);
@@ -379,12 +378,10 @@ void PaymentServer::initNetManager()
     // Query active SOCKS5 proxy
     if (optionsModel->getProxySettings(proxy)) {
         netManager->setProxy(proxy);
-		if (fDebugSpam)
-			qDebug() << "PaymentServer::initNetManager: Using SOCKS5 proxy" << proxy.hostName() << ":" << proxy.port();
+        qDebug() << "PaymentServer::initNetManager: Using SOCKS5 proxy" << proxy.hostName() << ":" << proxy.port();
     }
     else
-		if (fDebugSpam)
-			qDebug() << "PaymentServer::initNetManager: No active proxy server found.";
+        qDebug() << "PaymentServer::initNetManager: No active proxy server found.";
 
     connect(netManager, SIGNAL(finished(QNetworkReply*)),
             this, SLOT(netRequestFinished(QNetworkReply*)));

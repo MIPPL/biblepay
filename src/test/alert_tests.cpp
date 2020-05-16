@@ -205,7 +205,7 @@ BOOST_AUTO_TEST_CASE(AlertNotify)
     boost::filesystem::path temp = GetTempPath() /
         boost::filesystem::unique_path("alertnotify-%%%%.txt");
 
-    ForceSetArg("-alertnotify", std::string("echo %s >> ") + temp.string());
+    gArgs.ForceSetArg("-alertnotify", std::string("echo %s >> ") + temp.string());
 
     for (const auto& alert : alerts)
         alert.ProcessAlert(alertKey, false);

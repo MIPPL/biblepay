@@ -2,14 +2,14 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "activemasternode.h"
+#include "masternode/activemasternode.h"
 #include "addrman.h"
 #include "alert.h"
 #include "clientversion.h"
 #include "init.h"
-#include "governance.h"
-#include "masternode-payments.h"
-#include "masternode-sync.h"
+#include "governance/governance.h"
+#include "masternode/masternode-payments.h"
+#include "masternode/masternode-sync.h"
 #include "masternodeman.h"
 #include "messagesigner.h"
 #include "netfulfilledman.h"
@@ -88,7 +88,7 @@ bool CMasternodeMan::Add(CMasternode &mn)
 
     if (Has(mn.outpoint)) return false;
 
-    LogPrint("masternode", "CMasternodeMan::Add -- Adding new Masternode: addr=%s, %i now\n", mn.addr.ToString(), size() + 1);
+    LogPrint(BCLog::MASTERNODE, "CMasternodeMan::Add -- Adding new Masternode: addr=%s, %i now\n", mn.addr.ToString(), size() + 1);
     mapMasternodes[mn.outpoint] = mn;
     fMasternodesAdded = true;
     return true;
@@ -114,17 +114,14 @@ void CMasternodeMan::AskForMN(CNode* pnode, const COutPoint& outpoint, CConnman&
                 return;
             }
             // we asked this node for this outpoint but it's ok to ask again already
-			if (fDebugSpam)
-				LogPrintf("CMasternodeMan::AskForMN -- Asking same peer %s for missing masternode entry again: %s\n", addrSquashed.ToString(), outpoint.ToStringShort());
+            LogPrintf("CMasternodeMan::AskForMN -- Asking same peer %s for missing masternode entry again: %s\n", addrSquashed.ToString(), outpoint.ToStringShort());
         } else {
             // we already asked for this outpoint but not this node
-			if (fDebugSpam)
-				LogPrintf("CMasternodeMan::AskForMN -- Asking new peer %s for missing masternode entry: %s\n", addrSquashed.ToString(), outpoint.ToStringShort());
+            LogPrintf("CMasternodeMan::AskForMN -- Asking new peer %s for missing masternode entry: %s\n", addrSquashed.ToString(), outpoint.ToStringShort());
         }
     } else {
         // we never asked any node for this outpoint
-		if (fDebugSpam)
-			LogPrintf("CMasternodeMan::AskForMN -- Asking peer %s for missing masternode entry for the first time: %s\n", addrSquashed.ToString(), outpoint.ToStringShort());
+        LogPrintf("CMasternodeMan::AskForMN -- Asking peer %s for missing masternode entry for the first time: %s\n", addrSquashed.ToString(), outpoint.ToStringShort());
     }
     mWeAskedForMasternodeListEntry[outpoint][addrSquashed] = GetTime() + DSEG_UPDATE_SECONDS;
 
@@ -193,8 +190,7 @@ void CMasternodeMan::CheckAndRemove(CConnman& connman)
         return;
 
     if(!masternodeSync.IsMasternodeListSynced()) return;
-	if (fDebugSpam)
-		LogPrintf("CMasternodeMan::CheckAndRemove\n");
+	LogPrintf("CMasternodeMan::CheckAndRemove\n");
 
     {
         // Need LOCK2 here to ensure consistent locking order because code below locks cs_main
@@ -213,7 +209,7 @@ void CMasternodeMan::CheckAndRemove(CConnman& connman)
             uint256 hash = mnb.GetHash();
             // If collateral was spent ...
             if (it->second.IsOutpointSpent()) {
-                LogPrint("masternode", "CMasternodeMan::CheckAndRemove -- Removing Masternode: %s  addr=%s  %i now\n", it->second.GetStateString(), it->second.addr.ToString(), size() - 1);
+                LogPrint(BCLog::MASTERNODE, "CMasternodeMan::CheckAndRemove -- Removing Masternode: %s  addr=%s  %i now\n", it->second.GetStateString(), it->second.addr.ToString(), size() - 1);
 
                 // erase all of the broadcasts we've seen from this txin, ...
                 mapSeenMasternodeBroadcast.erase(hash);
@@ -249,7 +245,7 @@ void CMasternodeMan::CheckAndRemove(CConnman& connman)
                         fAskedForMnbRecovery = true;
                     }
                     if(fAskedForMnbRecovery) {
-                        LogPrint("masternode", "CMasternodeMan::CheckAndRemove -- Recovery initiated, masternode=%s\n", it->first.ToStringShort());
+                        LogPrint(BCLog::MASTERNODE, "CMasternodeMan::CheckAndRemove -- Recovery initiated, masternode=%s\n", it->first.ToStringShort());
                         nAskForMnbRecovery--;
                     }
                     // wait for mnb recovery replies for MNB_RECOVERY_WAIT_SECONDS seconds
@@ -260,20 +256,20 @@ void CMasternodeMan::CheckAndRemove(CConnman& connman)
         }
 
         // proces replies for MASTERNODE_NEW_START_REQUIRED masternodes
-        LogPrint("masternode", "CMasternodeMan::CheckAndRemove -- mMnbRecoveryGoodReplies size=%d\n", (int)mMnbRecoveryGoodReplies.size());
+        LogPrint(BCLog::MASTERNODE, "CMasternodeMan::CheckAndRemove -- mMnbRecoveryGoodReplies size=%d\n", (int)mMnbRecoveryGoodReplies.size());
         std::map<uint256, std::vector<CMasternodeBroadcast> >::iterator itMnbReplies = mMnbRecoveryGoodReplies.begin();
         while(itMnbReplies != mMnbRecoveryGoodReplies.end()){
             if(mMnbRecoveryRequests[itMnbReplies->first].first < GetTime()) {
                 // all nodes we asked should have replied now
                 if(itMnbReplies->second.size() >= MNB_RECOVERY_QUORUM_REQUIRED) {
                     // majority of nodes we asked agrees that this mn doesn't require new mnb, reprocess one of new mnbs
-                    LogPrint("masternode", "CMasternodeMan::CheckAndRemove -- reprocessing mnb, masternode=%s\n", itMnbReplies->second[0].outpoint.ToStringShort());
+                    LogPrint(BCLog::MASTERNODE, "CMasternodeMan::CheckAndRemove -- reprocessing mnb, masternode=%s\n", itMnbReplies->second[0].outpoint.ToStringShort());
                     // mapSeenMasternodeBroadcast.erase(itMnbReplies->first);
                     int nDos;
                     itMnbReplies->second[0].fRecovery = true;
                     CheckMnbAndUpdateMasternodeList(nullptr, itMnbReplies->second[0], nDos, connman);
                 }
-                LogPrint("masternode", "CMasternodeMan::CheckAndRemove -- removing mnb recovery reply, masternode=%s, size=%d\n", itMnbReplies->second[0].outpoint.ToStringShort(), (int)itMnbReplies->second.size());
+                LogPrint(BCLog::MASTERNODE, "CMasternodeMan::CheckAndRemove -- removing mnb recovery reply, masternode=%s, size=%d\n", itMnbReplies->second[0].outpoint.ToStringShort(), (int)itMnbReplies->second.size());
                 mMnbRecoveryGoodReplies.erase(itMnbReplies++);
             } else {
                 ++itMnbReplies;
@@ -349,8 +345,7 @@ void CMasternodeMan::CheckAndRemove(CConnman& connman)
         while(it4 != mapSeenMasternodePing.end()){
             if((*it4).second.IsExpired()) 
 			{
-				if (fDebugSpam)
-					LogPrint("masternode", "CMasternodeMan::CheckAndRemove -- Removing expired Masternode ping: hash=%s\n", (*it4).second.GetHash().ToString());
+                LogPrint(BCLog::MASTERNODE, "CMasternodeMan::CheckAndRemove -- Removing expired Masternode ping: hash=%s\n", (*it4).second.GetHash().ToString());
                 mapSeenMasternodePing.erase(it4++);
             } else {
                 ++it4;
@@ -361,16 +356,14 @@ void CMasternodeMan::CheckAndRemove(CConnman& connman)
         std::map<uint256, CMasternodeVerification>::iterator itv2 = mapSeenMasternodeVerification.begin();
         while(itv2 != mapSeenMasternodeVerification.end()){
             if((*itv2).second.nBlockHeight < nCachedBlockHeight - MAX_POSE_BLOCKS){
-				if (fDebugSpam)
-					LogPrint("masternode", "CMasternodeMan::CheckAndRemove -- Removing expired Masternode verification: hash=%s\n", (*itv2).first.ToString());
+                LogPrint(BCLog::MASTERNODE, "CMasternodeMan::CheckAndRemove -- Removing expired Masternode verification: hash=%s\n", (*itv2).first.ToString());
                 mapSeenMasternodeVerification.erase(itv2++);
             } else {
                 ++itv2;
             }
         }
 
-		if (fDebugSpam)
-			LogPrintf("CMasternodeMan::CheckAndRemove -- %s\n", ToString());
+        LogPrintf("CMasternodeMan::CheckAndRemove -- %s\n", ToString());
     }
 
     if(fMasternodesRemoved) {
@@ -534,7 +527,7 @@ void CMasternodeMan::DsegUpdate(CNode* pnode, CConnman& connman)
     int64_t askAgain = GetTime() + DSEG_UPDATE_SECONDS;
     mWeAskedForMasternodeList[addrSquashed] = askAgain;
 
-    LogPrint("masternode", "CMasternodeMan::DsegUpdate -- asked %s for the list\n", pnode->addr.ToString());
+    LogPrint(BCLog::MASTERNODE, "CMasternodeMan::DsegUpdate -- asked %s for the list\n", pnode->addr.ToString());
 }
 
 CMasternode* CMasternodeMan::Find(const COutPoint &outpoint)
@@ -772,11 +765,11 @@ masternode_info_t CMasternodeMan::FindRandomNotInVec(const std::vector<COutPoint
         if (deterministicMNManager->IsDeterministicMNsSporkActive() && !deterministicMNManager->HasValidMNCollateralAtChainTip(pmn->outpoint))
             continue;
         // found the one not in vecToExclude
-        LogPrint("masternode", "CMasternodeMan::FindRandomNotInVec -- found, masternode=%s\n", pmn->outpoint.ToStringShort());
+        LogPrint(BCLog::MASTERNODE, "CMasternodeMan::FindRandomNotInVec -- found, masternode=%s\n", pmn->outpoint.ToStringShort());
         return pmn->GetInfo();
     }
 
-    LogPrint("masternode", "CMasternodeMan::FindRandomNotInVec -- failed\n");
+    LogPrint(BCLog::MASTERNODE, "CMasternodeMan::FindRandomNotInVec -- failed\n");
     return masternode_info_t();
 }
 
@@ -916,8 +909,7 @@ void CMasternodeMan::ProcessMasternodeConnections(CConnman& connman)
             }
             if (fFound) return; // do NOT disconnect mixing masternodes
 #endif // ENABLE_WALLET
-			if (fDebugSpam)
-				LogPrintf("Closing Masternode connection: peer=%d, addr=%s\n", pnode->id, pnode->addr.ToString());
+            LogPrintf("Closing Masternode connection: peer=%d, addr=%s\n", pnode->id, pnode->addr.ToString());
             pnode->fDisconnect = true;
         }
     });
@@ -973,8 +965,7 @@ void CMasternodeMan::ProcessPendingMnbRequests(CConnman& connman)
             for (auto& nHash : itPendingMNB->second.second) {
                 if(nHash != uint256()) {
                     vToFetch.push_back(CInv(MSG_MASTERNODE_ANNOUNCE, nHash));
-					if (fDebugSpam)
-						LogPrint("masternode", "-- asking for mnb %s from addr=%s\n", nHash.ToString(), pnode->addr.ToString());
+                    LogPrint(BCLog::MASTERNODE, "-- asking for mnb %s from addr=%s\n", nHash.ToString(), pnode->addr.ToString());
                 }
             }
 
@@ -988,8 +979,7 @@ void CMasternodeMan::ProcessPendingMnbRequests(CConnman& connman)
         if (fDone || (GetTime() - nTimeAdded > 15)) {
             if (!fDone) 
 			{
-				if (fDebugSpam)
-					LogPrint("masternode", "CMasternodeMan::%s -- failed to connect to %s\n", __func__, itPendingMNB->first.ToString());
+                LogPrint(BCLog::MASTERNODE, "CMasternodeMan::%s -- failed to connect to %s\n", __func__, itPendingMNB->first.ToString());
             }
             mapPendingMNB.erase(itPendingMNB++);
         } else {
@@ -1017,8 +1007,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, const std::string& strCommand,
 
         if(!masternodeSync.IsBlockchainSynced()) return;
 
-		if (fDebugSpam)
-			LogPrint("masternode", "MNANNOUNCE -- Masternode announce, masternode=%s\n", mnb.outpoint.ToStringShort());
+        LogPrint(BCLog::MASTERNODE, "MNANNOUNCE -- Masternode announce, masternode=%s\n", mnb.outpoint.ToStringShort());
 
         int nDos = 0;
 
@@ -1047,8 +1036,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, const std::string& strCommand,
 
         if(!masternodeSync.IsBlockchainSynced()) return;
 
-		if (fDebugSpam)
-			LogPrint("masternode", "MNPING -- Masternode ping, masternode=%s\n", mnp.masternodeOutpoint.ToStringShort());
+        LogPrint(BCLog::MASTERNODE, "MNPING -- Masternode ping, masternode=%s\n", mnp.masternodeOutpoint.ToStringShort());
 
         // Need LOCK2 here to ensure consistent locking order because the CheckAndUpdate call below locks cs_main
         LOCK2(cs_main, cs);
@@ -1056,8 +1044,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, const std::string& strCommand,
         if(mapSeenMasternodePing.count(nHash)) return; //seen
         mapSeenMasternodePing.insert(std::make_pair(nHash, mnp));
 
-		if (fDebugSpam)
-			LogPrint("masternode", "MNPING -- Masternode ping, masternode=%s new\n", mnp.masternodeOutpoint.ToStringShort());
+        LogPrint(BCLog::MASTERNODE, "MNPING -- Masternode ping, masternode=%s new\n", mnp.masternodeOutpoint.ToStringShort());
 
         // see if we have this Masternode
         CMasternode* pmn = Find(mnp.masternodeOutpoint);
@@ -1092,8 +1079,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, const std::string& strCommand,
         COutPoint masternodeOutpoint;
         vRecv >> masternodeOutpoint;
 
-		if (fDebugSpam)
-			LogPrint("masternode", "DSEG -- Masternode list, masternode=%s\n", masternodeOutpoint.ToStringShort());
+        LogPrint(BCLog::MASTERNODE, "DSEG -- Masternode list, masternode=%s\n", masternodeOutpoint.ToStringShort());
 
         if(masternodeOutpoint.IsNull()) {
             SyncAll(pfrom, connman);
@@ -1141,11 +1127,9 @@ void CMasternodeMan::SyncSingle(CNode* pnode, const COutPoint& outpoint, CConnma
     if(it != mapMasternodes.end()) {
         if (it->second.addr.IsRFC1918() || it->second.addr.IsLocal()) return; // do not send local network masternode
         // NOTE: send masternode regardless of its current state, the other node will need it to verify old votes.
-		if (fDebugSpam)
-			LogPrint("masternode", "CMasternodeMan::%s -- Sending Masternode entry: masternode=%s  addr=%s\n", __func__, outpoint.ToStringShort(), it->second.addr.ToString());
+        LogPrint(BCLog::MASTERNODE, "CMasternodeMan::%s -- Sending Masternode entry: masternode=%s  addr=%s\n", __func__, outpoint.ToStringShort(), it->second.addr.ToString());
         PushDsegInvs(pnode, it->second);
-		if (fDebugSpam)
-			LogPrintf("CMasternodeMan::%s -- Sent 1 Masternode inv to peer=%d\n", __func__, pnode->id);
+        LogPrintf("CMasternodeMan::%s -- Sent 1 Masternode inv to peer=%d\n", __func__, pnode->id);
     }
 }
 
@@ -1180,15 +1164,13 @@ void CMasternodeMan::SyncAll(CNode* pnode, CConnman& connman)
             (mnpair.second.addr.IsRFC1918() || mnpair.second.addr.IsLocal()))
             continue; // do not send local network masternode
         // NOTE: send masternode regardless of its current state, the other node will need it to verify old votes.
-        if (fDebugSpam)
-			LogPrint("masternode", "CMasternodeMan::%s -- Sending Masternode entry: masternode=%s  addr=%s\n", __func__, mnpair.first.ToStringShort(), mnpair.second.addr.ToString());
+        LogPrint(BCLog::MASTERNODE, "CMasternodeMan::%s -- Sending Masternode entry: masternode=%s  addr=%s\n", __func__, mnpair.first.ToStringShort(), mnpair.second.addr.ToString());
         PushDsegInvs(pnode, mnpair.second);
         nInvCount++;
     }
 
     connman.PushMessage(pnode, CNetMsgMaker(pnode->GetSendVersion()).Make(NetMsgType::SYNCSTATUSCOUNT, MASTERNODE_SYNC_LIST, nInvCount));
-	if (fDebugSpam)
-		LogPrintf("CMasternodeMan::%s -- Sent %d Masternode invs to peer=%d\n", __func__, nInvCount, pnode->id);
+	LogPrintf("CMasternodeMan::%s -- Sent %d Masternode invs to peer=%d\n", __func__, nInvCount, pnode->id);
 }
 
 void CMasternodeMan::PushDsegInvs(CNode* pnode, const CMasternode& mn)
@@ -1229,13 +1211,13 @@ void CMasternodeMan::DoFullVerificationStep(CConnman& connman)
     // send verify requests only if we are in top MAX_POSE_RANK
     for (auto& rankPair : vecMasternodeRanks) {
         if(rankPair.first > MAX_POSE_RANK) {
-            LogPrint("masternode", "CMasternodeMan::DoFullVerificationStep -- Must be in top %d to send verify request\n",
+            LogPrint(BCLog::MASTERNODE, "CMasternodeMan::DoFullVerificationStep -- Must be in top %d to send verify request\n",
                         (int)MAX_POSE_RANK);
             return;
         }
         if(rankPair.second.outpoint == activeMasternodeInfo.outpoint) {
             nMyRank = rankPair.first;
-            LogPrint("masternode", "CMasternodeMan::DoFullVerificationStep -- Found self at rank %d/%d, verifying up to %d masternodes\n",
+            LogPrint(BCLog::MASTERNODE, "CMasternodeMan::DoFullVerificationStep -- Found self at rank %d/%d, verifying up to %d masternodes\n",
                         nMyRank, nRanksTotal, (int)MAX_POSE_CONNECTIONS);
             break;
         }
@@ -1252,7 +1234,7 @@ void CMasternodeMan::DoFullVerificationStep(CConnman& connman)
     auto it = vecMasternodeRanks.begin() + nOffset;
     while(it != vecMasternodeRanks.end()) {
         if(it->second.IsPoSeVerified() || it->second.IsPoSeBanned()) {
-            LogPrint("masternode", "CMasternodeMan::DoFullVerificationStep -- Already %s%s%s masternode %s address %s, skipping...\n",
+            LogPrint(BCLog::MASTERNODE, "CMasternodeMan::DoFullVerificationStep -- Already %s%s%s masternode %s address %s, skipping...\n",
                         it->second.IsPoSeVerified() ? "verified" : "",
                         it->second.IsPoSeVerified() && it->second.IsPoSeBanned() ? " and " : "",
                         it->second.IsPoSeBanned() ? "banned" : "",
@@ -1262,7 +1244,7 @@ void CMasternodeMan::DoFullVerificationStep(CConnman& connman)
             it += MAX_POSE_CONNECTIONS;
             continue;
         }
-        LogPrint("masternode", "CMasternodeMan::DoFullVerificationStep -- Verifying masternode %s rank %d/%d address %s\n",
+        LogPrint(BCLog::MASTERNODE, "CMasternodeMan::DoFullVerificationStep -- Verifying masternode %s rank %d/%d address %s\n",
                     it->second.outpoint.ToStringShort(), it->first, nRanksTotal, it->second.addr.ToString());
         CAddress addr = CAddress(it->second.addr, NODE_NETWORK);
         if(CheckVerifyRequestAddr(addr, connman)) {
@@ -1279,7 +1261,7 @@ void CMasternodeMan::DoFullVerificationStep(CConnman& connman)
         PrepareVerifyRequest(addr, connman);
     }
 
-    LogPrint("masternode", "CMasternodeMan::DoFullVerificationStep -- Prepared verification requests for %d masternodes\n", vAddr.size());
+    LogPrint(BCLog::MASTERNODE, "CMasternodeMan::DoFullVerificationStep -- Prepared verification requests for %d masternodes\n", vAddr.size());
 }
 
 // This function tries to find masternodes with the same addr,
@@ -1350,7 +1332,7 @@ bool CMasternodeMan::CheckVerifyRequestAddr(const CAddress& addr, CConnman& conn
 
     if(netfulfilledman.HasFulfilledRequest(addr, strprintf("%s", NetMsgType::MNVERIFY)+"-request")) {
         // we already asked for verification, not a good idea to do this too often, skip it
-        LogPrint("masternode", "CMasternodeMan::%s -- too many requests, skipping... addr=%s\n", __func__, addr.ToString());
+        LogPrint(BCLog::MASTERNODE, "CMasternodeMan::%s -- too many requests, skipping... addr=%s\n", __func__, addr.ToString());
         return false;
     }
 
@@ -1381,7 +1363,7 @@ void CMasternodeMan::ProcessPendingMnvRequests(CConnman& connman)
             netfulfilledman.AddFulfilledRequest(pnode->addr, strprintf("%s", NetMsgType::MNVERIFY)+"-request");
             // use random nonce, store it and require node to reply with correct one later
             mWeAskedForVerification[pnode->addr] = itPendingMNV->second.second;
-            LogPrint("masternode", "-- verifying node using nonce %d addr=%s\n", itPendingMNV->second.second.nonce, pnode->addr.ToString());
+            LogPrint(BCLog::MASTERNODE, "-- verifying node using nonce %d addr=%s\n", itPendingMNV->second.second.nonce, pnode->addr.ToString());
             CNetMsgMaker msgMaker(pnode->GetSendVersion()); // TODO this gives a warning about version not being set (we should wait for VERSION exchange)
             connman.PushMessage(pnode, msgMaker.Make(NetMsgType::MNVERIFY, itPendingMNV->second.second));
             return true;
@@ -1390,7 +1372,7 @@ void CMasternodeMan::ProcessPendingMnvRequests(CConnman& connman)
         int64_t nTimeAdded = itPendingMNV->second.first;
         if (fDone || (GetTime() - nTimeAdded > 15)) {
             if (!fDone) {
-                LogPrint("masternode", "CMasternodeMan::%s -- failed to connect to %s\n", __func__, itPendingMNV->first.ToString());
+                LogPrint(BCLog::MASTERNODE, "CMasternodeMan::%s -- failed to connect to %s\n", __func__, itPendingMNV->first.ToString());
             }
             mapPendingMNV.erase(itPendingMNV++);
         } else {
@@ -1589,7 +1571,7 @@ void CMasternodeMan::ProcessVerifyReply(CNode* pnode, CMasternodeVerification& m
         // increase ban score for everyone else
         for (const auto& pmn : vpMasternodesToBan) {
             pmn->IncreasePoSeBanScore();
-            LogPrint("masternode", "CMasternodeMan::ProcessVerifyReply -- increased PoSe ban score for %s addr %s, new score %d\n",
+            LogPrint(BCLog::MASTERNODE, "CMasternodeMan::ProcessVerifyReply -- increased PoSe ban score for %s addr %s, new score %d\n",
                         prealMasternode->outpoint.ToStringShort(), pnode->addr.ToString(), pmn->nPoSeBanScore);
         }
         if(!vpMasternodesToBan.empty())
@@ -1615,14 +1597,13 @@ void CMasternodeMan::ProcessVerifyBroadcast(CNode* pnode, const CMasternodeVerif
 
     // we don't care about history
     if(mnv.nBlockHeight < nCachedBlockHeight - MAX_POSE_BLOCKS) {
-		if (fDebugSpam)
-			LogPrint("masternode", "CMasternodeMan::ProcessVerifyBroadcast -- Outdated: current block %d, verification block %d, peer=%d\n",
+        LogPrint(BCLog::MASTERNODE, "CMasternodeMan::ProcessVerifyBroadcast -- Outdated: current block %d, verification block %d, peer=%d\n",
                     nCachedBlockHeight, mnv.nBlockHeight, pnode->id);
         return;
     }
 
     if(mnv.masternodeOutpoint1 == mnv.masternodeOutpoint2) {
-        LogPrint("masternode", "CMasternodeMan::ProcessVerifyBroadcast -- ERROR: same outpoints %s, peer=%d\n",
+        LogPrint(BCLog::MASTERNODE, "CMasternodeMan::ProcessVerifyBroadcast -- ERROR: same outpoints %s, peer=%d\n",
                     mnv.masternodeOutpoint1.ToStringShort(), pnode->id);
         // that was NOT a good idea to cheat and verify itself,
         // ban the node we received such message from
@@ -1640,13 +1621,13 @@ void CMasternodeMan::ProcessVerifyBroadcast(CNode* pnode, const CMasternodeVerif
     int nRank;
 
     if (!GetMasternodeRank(mnv.masternodeOutpoint2, nRank, mnv.nBlockHeight, MIN_POSE_PROTO_VERSION)) {
-        LogPrint("masternode", "CMasternodeMan::ProcessVerifyBroadcast -- Can't calculate rank for masternode %s\n",
+        LogPrint(BCLog::MASTERNODE, "CMasternodeMan::ProcessVerifyBroadcast -- Can't calculate rank for masternode %s\n",
                     mnv.masternodeOutpoint2.ToStringShort());
         return;
     }
 
     if(nRank > MAX_POSE_RANK) {
-        LogPrint("masternode", "CMasternodeMan::ProcessVerifyBroadcast -- Masternode %s is not in top %d, current rank %d, peer=%d\n",
+        LogPrint(BCLog::MASTERNODE, "CMasternodeMan::ProcessVerifyBroadcast -- Masternode %s is not in top %d, current rank %d, peer=%d\n",
                     mnv.masternodeOutpoint2.ToStringShort(), (int)MAX_POSE_RANK, nRank, pnode->id);
         return;
     }
@@ -1705,8 +1686,7 @@ void CMasternodeMan::ProcessVerifyBroadcast(CNode* pnode, const CMasternodeVerif
         }
         mnv.Relay();
 
-		if (fDebugSpam)
-			LogPrintf("CMasternodeMan::ProcessVerifyBroadcast -- verified masternode %s for addr %s\n",
+        LogPrintf("CMasternodeMan::ProcessVerifyBroadcast -- verified masternode %s for addr %s\n",
                     pmn1->outpoint.ToStringShort(), pmn1->addr.ToString());
 
         // increase ban score for everyone else with the same addr
@@ -1715,7 +1695,7 @@ void CMasternodeMan::ProcessVerifyBroadcast(CNode* pnode, const CMasternodeVerif
             if(mnpair.second.addr != mnv.addr || mnpair.first == mnv.masternodeOutpoint1) continue;
             mnpair.second.IncreasePoSeBanScore();
             nCount++;
-            LogPrint("masternode", "CMasternodeMan::ProcessVerifyBroadcast -- increased PoSe ban score for %s addr %s, new score %d\n",
+            LogPrint(BCLog::MASTERNODE, "CMasternodeMan::ProcessVerifyBroadcast -- increased PoSe ban score for %s addr %s, new score %d\n",
                         mnpair.first.ToStringShort(), mnpair.second.addr.ToString(), mnpair.second.nPoSeBanScore);
         }
         if(nCount)
@@ -1753,31 +1733,26 @@ bool CMasternodeMan::CheckMnbAndUpdateMasternodeList(CNode* pfrom, CMasternodeBr
     {
         LOCK(cs);
         nDos = 0;
-		if (fDebugSpam)
-			LogPrint("masternode", "CMasternodeMan::CheckMnbAndUpdateMasternodeList -- masternode=%s\n", mnb.outpoint.ToStringShort());
+        LogPrint(BCLog::MASTERNODE, "CMasternodeMan::CheckMnbAndUpdateMasternodeList -- masternode=%s\n", mnb.outpoint.ToStringShort());
 
         uint256 hash = mnb.GetHash();
         if(mapSeenMasternodeBroadcast.count(hash) && !mnb.fRecovery) 
 		{ 
 			//seen
-			if (fDebugSpam)
-				LogPrint("masternode", "CMasternodeMan::CheckMnbAndUpdateMasternodeList -- masternode=%s seen\n", mnb.outpoint.ToStringShort());
+            LogPrint(BCLog::MASTERNODE, "CMasternodeMan::CheckMnbAndUpdateMasternodeList -- masternode=%s seen\n", mnb.outpoint.ToStringShort());
             // less then 2 pings left before this MN goes into non-recoverable state, bump sync timeout
             if(GetTime() - mapSeenMasternodeBroadcast[hash].first > MASTERNODE_NEW_START_REQUIRED_SECONDS - MASTERNODE_MIN_MNP_SECONDS * 2) {
-                if (fDebugSpam)
-					LogPrint("masternode", "CMasternodeMan::CheckMnbAndUpdateMasternodeList -- masternode=%s seen update\n", mnb.outpoint.ToStringShort());
+                LogPrint(BCLog::MASTERNODE, "CMasternodeMan::CheckMnbAndUpdateMasternodeList -- masternode=%s seen update\n", mnb.outpoint.ToStringShort());
                 mapSeenMasternodeBroadcast[hash].first = GetTime();
                 masternodeSync.BumpAssetLastTime("CMasternodeMan::CheckMnbAndUpdateMasternodeList - seen");
             }
             // did we ask this node for it?
             if(pfrom && IsMnbRecoveryRequested(hash) && GetTime() < mMnbRecoveryRequests[hash].first) 
 			{
-				if (fDebugSpam)
-					LogPrint("masternode", "CMasternodeMan::CheckMnbAndUpdateMasternodeList -- mnb=%s seen request\n", hash.ToString());
+                LogPrint(BCLog::MASTERNODE, "CMasternodeMan::CheckMnbAndUpdateMasternodeList -- mnb=%s seen request\n", hash.ToString());
                 if(mMnbRecoveryRequests[hash].second.count(pfrom->addr)) 
 				{
-					if (fDebugSpam)
-						LogPrint("masternode", "CMasternodeMan::CheckMnbAndUpdateMasternodeList -- mnb=%s seen request, addr=%s\n", hash.ToString(), pfrom->addr.ToString());
+                    LogPrint(BCLog::MASTERNODE, "CMasternodeMan::CheckMnbAndUpdateMasternodeList -- mnb=%s seen request, addr=%s\n", hash.ToString(), pfrom->addr.ToString());
                     // do not allow node to send same mnb multiple times in recovery mode
                     mMnbRecoveryRequests[hash].second.erase(pfrom->addr);
                     // does it have newer lastPing?
@@ -1785,12 +1760,10 @@ bool CMasternodeMan::CheckMnbAndUpdateMasternodeList(CNode* pfrom, CMasternodeBr
                         // simulate Check
                         CMasternode mnTemp = CMasternode(mnb);
                         mnTemp.Check();
-                        if (fDebugSpam)
-							LogPrint("masternode", "CMasternodeMan::CheckMnbAndUpdateMasternodeList -- mnb=%s seen request, addr=%s, better lastPing: %d min ago, projected mn state: %s\n", hash.ToString(), pfrom->addr.ToString(), (GetAdjustedTime() - mnb.lastPing.sigTime)/60, mnTemp.GetStateString());
+                        LogPrint(BCLog::MASTERNODE, "CMasternodeMan::CheckMnbAndUpdateMasternodeList -- mnb=%s seen request, addr=%s, better lastPing: %d min ago, projected mn state: %s\n", hash.ToString(), pfrom->addr.ToString(), (GetAdjustedTime() - mnb.lastPing.sigTime)/60, mnTemp.GetStateString());
                         if(mnTemp.IsValidStateForAutoStart(mnTemp.nActiveState)) {
                             // this node thinks it's a good one
-                            if (fDebugSpam)
-								LogPrint("masternode", "CMasternodeMan::CheckMnbAndUpdateMasternodeList -- masternode=%s seen good\n", mnb.outpoint.ToStringShort());
+                            LogPrint(BCLog::MASTERNODE, "CMasternodeMan::CheckMnbAndUpdateMasternodeList -- masternode=%s seen good\n", mnb.outpoint.ToStringShort());
                             mMnbRecoveryGoodReplies[hash].push_back(mnb);
                         }
                     }
@@ -1800,12 +1773,10 @@ bool CMasternodeMan::CheckMnbAndUpdateMasternodeList(CNode* pfrom, CMasternodeBr
         }
         mapSeenMasternodeBroadcast.insert(std::make_pair(hash, std::make_pair(GetTime(), mnb)));
 
-		if (fDebugSpam)
-			LogPrint("masternode", "CMasternodeMan::CheckMnbAndUpdateMasternodeList -- masternode=%s new\n", mnb.outpoint.ToStringShort());
+        LogPrint(BCLog::MASTERNODE, "CMasternodeMan::CheckMnbAndUpdateMasternodeList -- masternode=%s new\n", mnb.outpoint.ToStringShort());
 
         if(!mnb.SimpleCheck(nDos)) {
-            if (fDebugSpam)
-				LogPrint("masternode", "CMasternodeMan::CheckMnbAndUpdateMasternodeList -- SimpleCheck() failed, masternode=%s\n", mnb.outpoint.ToStringShort());
+            LogPrint(BCLog::MASTERNODE, "CMasternodeMan::CheckMnbAndUpdateMasternodeList -- SimpleCheck() failed, masternode=%s\n", mnb.outpoint.ToStringShort());
             return false;
         }
 
@@ -1814,8 +1785,7 @@ bool CMasternodeMan::CheckMnbAndUpdateMasternodeList(CNode* pfrom, CMasternodeBr
         if(pmn) {
             CMasternodeBroadcast mnbOld = mapSeenMasternodeBroadcast[CMasternodeBroadcast(*pmn).GetHash()].second;
             if(!mnb.Update(pmn, nDos, connman)) {
-                if (fDebugSpam)
-					LogPrint("masternode", "CMasternodeMan::CheckMnbAndUpdateMasternodeList -- Update() failed, masternode=%s\n", mnb.outpoint.ToStringShort());
+                LogPrint(BCLog::MASTERNODE, "CMasternodeMan::CheckMnbAndUpdateMasternodeList -- Update() failed, masternode=%s\n", mnb.outpoint.ToStringShort());
                 return false;
             }
             if(hash != mnbOld.GetHash()) {
@@ -1833,15 +1803,13 @@ bool CMasternodeMan::CheckMnbAndUpdateMasternodeList(CNode* pfrom, CMasternodeBr
             mnb.nPoSeBanScore = -MASTERNODE_POSE_BAN_MAX_SCORE;
             if(mnb.nProtocolVersion == PROTOCOL_VERSION) {
                 // ... and PROTOCOL_VERSION, then we've been remotely activated ...
-                if (fDebugSpam)
-					LogPrintf("CMasternodeMan::CheckMnbAndUpdateMasternodeList -- Got NEW Masternode entry: masternode=%s  sigTime=%lld  addr=%s\n",
+                LogPrintf("CMasternodeMan::CheckMnbAndUpdateMasternodeList -- Got NEW Masternode entry: masternode=%s  sigTime=%lld  addr=%s\n",
                             mnb.outpoint.ToStringShort(), mnb.sigTime, mnb.addr.ToString());
                 legacyActiveMasternodeManager.ManageState(connman);
             } else {
                 // ... otherwise we need to reactivate our node, do not add it to the list and do not relay
                 // but also do not ban the node we get this message from
-                if (fDebugSpam)
-					LogPrintf("CMasternodeMan::CheckMnbAndUpdateMasternodeList -- wrong PROTOCOL_VERSION, re-activate your MN: message nProtocolVersion=%d  PROTOCOL_VERSION=%d\n", mnb.nProtocolVersion, PROTOCOL_VERSION);
+                LogPrintf("CMasternodeMan::CheckMnbAndUpdateMasternodeList -- wrong PROTOCOL_VERSION, re-activate your MN: message nProtocolVersion=%d  PROTOCOL_VERSION=%d\n", mnb.nProtocolVersion, PROTOCOL_VERSION);
                 return false;
             }
         }
@@ -1865,7 +1833,7 @@ void CMasternodeMan::UpdateLastPaid(const CBlockIndex* pindex)
     int nMaxBlocksToScanBack = std::max(LAST_PAID_SCAN_BLOCKS, nCachedBlockHeight - nLastRunBlockHeight);
     nMaxBlocksToScanBack = std::min(nMaxBlocksToScanBack, mnpayments.GetStorageLimit());
 
-    LogPrint("masternode", "CMasternodeMan::UpdateLastPaid -- nCachedBlockHeight=%d, nLastRunBlockHeight=%d, nMaxBlocksToScanBack=%d\n",
+    LogPrint(BCLog::MASTERNODE, "CMasternodeMan::UpdateLastPaid -- nCachedBlockHeight=%d, nLastRunBlockHeight=%d, nMaxBlocksToScanBack=%d\n",
                             nCachedBlockHeight, nLastRunBlockHeight, nMaxBlocksToScanBack);
 
     for (auto& mnpair : mapMasternodes) {
@@ -1954,8 +1922,7 @@ void CMasternodeMan::SetMasternodeLastPing(const COutPoint& outpoint, const CMas
 void CMasternodeMan::UpdatedBlockTip(const CBlockIndex *pindex)
 {
     nCachedBlockHeight = pindex->nHeight;
-    if (fDebugSpam)
-		LogPrint("masternode", "CMasternodeMan::UpdatedBlockTip -- nCachedBlockHeight=%d\n", nCachedBlockHeight);
+    LogPrint(BCLog::MASTERNODE, "CMasternodeMan::UpdatedBlockTip -- nCachedBlockHeight=%d\n", nCachedBlockHeight);
 
     AddDeterministicMasternodes();
     RemoveNonDeterministicMasternodes();

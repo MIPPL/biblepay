@@ -384,10 +384,10 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx, TransactionReco
 		else
 			strHTML += "<br><br>";
 
-        BOOST_FOREACH(const CTxIn& txin, wtx.tx->vin)
+        for (const CTxIn& txin : wtx.tx->vin)
             if(wallet->IsMine(txin))
                 strHTML += "<b>" + tr("Debit") + ":</b> " + BitcoinUnits::formatHtmlWithUnit(unit, -wallet->GetDebit(txin, ISMINE_ALL)) + "<br>";
-        BOOST_FOREACH(const CTxOut& txout, wtx.tx->vout)
+        for (const CTxOut& txout : wtx.tx->vout)
 		{
             std::string sDest = PubKeyToAddress(txout.scriptPubKey);
 			if(wallet->IsMine(txout))
@@ -406,7 +406,7 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx, TransactionReco
 		int iRow = 0;
 		if (nDepth > 0 && pindexTxList != NULL)
 		{
-			BOOST_FOREACH(const CTxIn& txin, wtx.tx->vin)
+            for (const CTxIn& txin : wtx.tx->vin)
 			{
 				COutPoint prevout = txin.prevout;
 

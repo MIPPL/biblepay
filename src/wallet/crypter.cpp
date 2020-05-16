@@ -458,7 +458,7 @@ std::vector<char> ReadAllBytes(char const* filename)
 
 std::string GetSANDirectory3()
 {
-	 boost::filesystem::path pathConfigFile(GetArg("-conf", GetConfFileName()));
+	 boost::filesystem::path pathConfigFile(gArgs.GetArg("-conf", GetConfFileName()));
      if (!pathConfigFile.is_complete()) pathConfigFile = GetDataDir(false) / pathConfigFile;
 	 boost::filesystem::path dir = pathConfigFile.parent_path();
 	 std::string sDir = dir.string() + "/SAN/";

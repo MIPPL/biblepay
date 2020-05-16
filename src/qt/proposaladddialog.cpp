@@ -14,9 +14,9 @@
 #include "platformstyle.h"
 #include "receiverequestdialog.h"
 #include "recentrequeststablemodel.h"
-#include "governance.h"
-#include "governance-vote.h"
-#include "governance-classes.h"
+#include "governance/governance.h"
+#include "governance/governance-vote.h"
+#include "governance/governance-classes.h"
 
 #include "walletmodel.h"
 #include "validation.h"

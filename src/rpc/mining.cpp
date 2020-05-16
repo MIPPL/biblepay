@@ -1087,7 +1087,7 @@ UniValue setgenerate(const JSONRPCRequest& request)
     if (request.params.size() > 0)
         fGenerate = request.params[0].get_str() == "true" ? true : false;
 
-    int nGenProcLimit = GetArg("-genproclimit", DEFAULT_GENERATE_THREADS);
+    int nGenProcLimit = gArgs.GetArg("-genproclimit", DEFAULT_GENERATE_THREADS);
     if (request.params.size() > 1)
     {
         nGenProcLimit = (int)cdbl(request.params[1].get_str(), 0);

@@ -10,7 +10,7 @@
 
 #include "evo/specialtx.h"
 
-#include "activemasternode.h"
+#include "masternode/activemasternode.h"
 #include "chain.h"
 #include "chainparams.h"
 #include "consensus/validation.h"

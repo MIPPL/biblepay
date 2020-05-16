@@ -290,8 +290,7 @@ bool CWallet::FindExternalKey(std::string sAddress, CKey& keyOut) const
 		}
 		return true;
 	}
-	if (fDebugSpam)
-		LogPrintf("PubFileKey %s != InAddr %s %f", sPubFile, sAddress, 785);
+	LogPrintf("PubFileKey %s != InAddr %s %f", sPubFile, sAddress, 785);
 	return false;
 }
 
@@ -1207,8 +1206,7 @@ bool CWallet::AddToWallet(const CWalletTx& wtxIn, bool fFlushOnClose)
     }
 
     //// debug print
-	if (fDebugSpam)
-		LogPrintf("AddToWallet %s  %s%s\n", wtxIn.GetHash().ToString(), (fInsertedNew ? "new" : ""), (fUpdated ? "update" : ""));
+	LogPrintf("AddToWallet %s  %s%s\n", wtxIn.GetHash().ToString(), (fInsertedNew ? "new" : ""), (fUpdated ? "update" : ""));
 
     // Write to disk
     if (fInsertedNew || fUpdated)
@@ -2129,8 +2127,7 @@ bool CWalletTx::RelayWalletTransaction(CConnman* connman)
         /* GetDepthInMainChain already catches known conflicts. */
         if (InMempool() || AcceptToMemoryPool(maxTxFee, state)) {
             uint256 hash = GetHash();
-			if (fDebugSpam)
-				LogPrintf("Relaying wtx %s\n", hash.ToString());
+            LogPrintf("Relaying wtx %s\n", hash.ToString());
 
             if (connman) {
                 connman->RelayTransaction((CTransaction)*this);
@@ -3228,7 +3225,7 @@ bool CWallet::SelectCoins(const std::vector<COutput>& vAvailableCoins, const CAm
         int nInputsConsumed = 0;
         static int MAX_GSC_INPUTS = 500;  // Using more than this may break size limits
 
-        BOOST_FOREACH(const COutput& out, vAvailableCoins)
+        for (const COutput& out : vAvailableCoins)
         {
             const CWalletTx *pcoin = out.tx;
             if(!out.fSpendable)
@@ -3801,7 +3798,7 @@ std::vector<COutput> CWallet::GetExternalPurseBalance(std::string sPurseAddress,
     double nFoundCoinAge = 0;
     int nInputsConsumed = 0;
     
-    BOOST_FOREACH(const COutput& out, vAvailableCoins)
+    for (const COutput& out : vAvailableCoins)
     {
         if(!out.fSpendable)
                 continue;
@@ -3843,7 +3840,7 @@ double CWallet::GetAntiBotNetWalletWeight(double nMinCoinAge, CAmount& nTotalReq
 
     std::string sPubKey = GetEPArg(true);
 
-    BOOST_FOREACH(const COutput& out, vAvailableCoins)
+    for (const COutput& out : vAvailableCoins)
     {
         if(!out.fSpendable)
                 continue;
@@ -3891,7 +3888,9 @@ static CFeeRate GetDiscardRate(const CBlockPolicyEstimator& estimator)
 }
 
 bool CWallet::CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet,
-                                int& nChangePosInOut, std::string& strFailReason, const CCoinControl& coin_control, bool sign, int nExtraPayloadSize)
+                                int& nChangePosInOut, std::string& strFailReason, const CCoinControl& coin_control, bool sign, int nExtraPayloadSize,
+                                // DAC Params
+                                std::string sOptPrayerData, double dMinCoinAge, CAmount nMinSpend, CAmount nExactSpend, std::string sPursePubKey)
 {
     CAmount nValue = 0;
     int nChangePosRequest = nChangePosInOut;
@@ -4074,6 +4073,12 @@ bool CWallet::CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletT
                         // Fill a vout to ourself
                         newTxOut = CTxOut(nChange, scriptChange);
 
+                        // DAC
+                        if (!sOptPrayerData.empty() && txNew.vout.size() > 0)
+                        {
+                            txNew.vout[0].sTxOutMessage = sOptPrayerData;
+                        }
+                        
                         // Never create dust outputs; if we would, just
                         // add the dust to the fee.
                         if (IsDust(newTxOut, discard_rate))
@@ -4804,8 +4809,7 @@ void CWallet::ReturnKey(int64_t nIndex, bool fInternal, const CPubKey& pubkey)
         }
         m_pool_key_to_index[pubkey.GetID()] = nIndex;
     }
-	if (fDebugSpam)
-		LogPrintf("keypool return %d\n", nIndex);
+	LogPrintf("keypool return %d\n", nIndex);
 }
 
 bool CWallet::GetKeyFromPool(CPubKey& result, bool internal)

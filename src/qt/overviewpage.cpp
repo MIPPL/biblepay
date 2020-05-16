@@ -493,12 +493,10 @@ void OverviewPage::privateSendStatus()
 	if ((PRAYER_MODULUS % 60) == 0)
 	{
 		PRAYER_MODULUS = 0;
-		if (fDebugSpam)
-			LogPrintf(" Prayer Modulus %f ", PRAYER_MODULUS);
+        LogPrintf(" Prayer Modulus %f ", PRAYER_MODULUS);
 		SetOverviewStatus();
 		updatePrayers();
-		if (fDebugSpam)
-			LogPrintf(" Prayer Modulus %f complete ", PRAYER_MODULUS);
+        LogPrintf(" Prayer Modulus %f complete ", PRAYER_MODULUS);
 	}
 	// END OF DAC
 

@@ -34,7 +34,7 @@
 #include "masternode/masternode-sync.h"
 #include "validationinterface.h"
 #include "smartcontract-client.h"
-#include "governance-classes.h" // For superblock Height
+#include "governance/governance-classes.h" // For superblock Height
 #include "rpcpodc.h"
 
 #include "evo/specialtx.h"
@@ -189,8 +189,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
 
     nLastBlockTx = nBlockTx;
     nLastBlockSize = nBlockSize;
-	if (fDebugSpam)
-		LogPrintf("CreateNewBlock(): total size %u txs: %u fees: %ld sigops %d\n", nBlockSize, nBlockTx, nFees, nBlockSigOps);
+	LogPrintf("CreateNewBlock(): total size %u txs: %u fees: %ld sigops %d\n", nBlockSize, nBlockTx, nFees, nBlockSigOps);
 
     // Create coinbase transaction.
     CMutableTransaction coinbaseTx;
@@ -264,8 +263,7 @@ std::unique_ptr<CBlockTemplate> BlockAssembler::CreateNewBlock(const CScript& sc
     CValidationState state;
     if (!TestBlockValidityLite(state, chainparams, *pblock, pindexPrev, false, false, true, true)) 
 	{
-		if (fDebugSpam)
-			LogPrint("miner", "BibleMiner failed to create new block\n");
+        LogPrint(BCLog::MINER, "BibleMiner failed to create new block\n");
         return NULL;
     }
     int64_t nTime2 = GetTimeMicros();
@@ -582,7 +580,7 @@ bool CreateBlockForStratum(std::string sAddress, uint256 uRandomXKey, std::vecto
 	std::unique_ptr<CBlockTemplate> pblocktemplate(BlockAssembler(Params()).CreateNewBlock(coinbaseScript->reserveScript, sAddress, uRandomXKey, vRandomXHeader));
 	if (!pblocktemplate.get())
     {
-		LogPrint("miner", "CreateBlockForStratum::No block to mine %f", iThreadID);
+		LogPrint(BCLog::MINER, "CreateBlockForStratum::No block to mine %f", iThreadID);
 		sError = "Wallet Locked/ABN Required";
 		return false;
     }
@@ -605,9 +603,9 @@ void static BibleMiner(const CChainParams& chainparams, int iThreadID, int iFeat
 	double nHashesDone = 0;
 	
 	// This allows the miner to dictate how much sleep will occur when distributed computing is enabled.  This will let PODC use the maximum CPU time.  NOTE: The default is 200ms per 256 hashes.
-	double dMinerSleep = cdbl(GetArg("-minersleep", "325"), 0);
+	double dMinerSleep = cdbl(gArgs.GetArg("-minersleep", "325"), 0);
 	// The jackrabbit start option forces the miner to start regardless of rules (like not having peers, not being synced etc).
-	double dJackrabbitStart = cdbl(GetArg("-jackrabbitstart", "0"), 0);
+	double dJackrabbitStart = cdbl(gArgs.GetArg("-jackrabbitstart", "0"), 0);
     RenameThread("dac-miner");
 				
     boost::shared_ptr<CReserveScript> coinbaseScript;
@@ -664,7 +662,7 @@ recover:
 			if (!pblocktemplate.get())
             {
 				MilliSleep(15000);
-				LogPrint("miner", "No block to mine %f", iThreadID);
+				LogPrint(BCLog::MINER, "No block to mine %f", iThreadID);
 				goto recover;
             }
 
@@ -676,8 +674,7 @@ recover:
             IncrementExtraNonce(pblock, pindexPrev, nExtraNonce);
 			nHashesDone++;
 			UpdateHashesPerSec(nHashesDone);
-			if (fDebugSpam)
-				LogPrint("miner", "SoloMiner -- Running miner with %u transactions in block (%u bytes)\n", 
+            LogPrint(BCLog::MINER, "SoloMiner -- Running miner with %u transactions in block (%u bytes)\n", 
 				     pblock->vtx.size(), ::GetSerializeSize(*pblock, SER_NETWORK, PROTOCOL_VERSION));
 		    //
             // Search
@@ -711,7 +708,7 @@ recover:
 							bool bAccepted = !ProcessNewBlock(Params(), shared_pblock, true, NULL);
 							if (!bAccepted)
 							{
-								LogPrint("miner", "\nblock rejected.");
+								LogPrint(BCLog::MINER, "\nblock rejected.");
 								MilliSleep(15000);
 							}
 							coinbaseScript->KeepScript();
@@ -792,13 +789,13 @@ recover:
     }
     catch (const boost::thread_interrupted&)
     {
-        LogPrint("miner", "\r\nSoloMiner -- terminated\n %f", iThreadID);
+        LogPrint(BCLog::MINER, "\r\nSoloMiner -- terminated\n %f", iThreadID);
 		dHashesPerSec = 0;
         throw;
     }
     catch (const std::runtime_error &e)
     {
-        LogPrint("miner", "\r\nSoloMiner -- runtime error: %s\n", e.what());
+        LogPrint(BCLog::MINER, "\r\nSoloMiner -- runtime error: %s\n", e.what());
 		dHashesPerSec = 0;
 		// This happens occasionally when TestBlockValidity fails; I suppose the best thing to do for now is start the thread over.
 		nThreadStart = GetTimeMillis();

@@ -1,7 +1,7 @@
 #include "businessobjectlist.h"
 #include "bitcoinunits.h"
 #include "ui_businessobjectlist.h"
-#include "masternode-sync.h"
+#include "masternode/masternode-sync.h"
 #include "secdialog.h"
 #include "ui_secdialog.h"
 #include "walletmodel.h"

@@ -33,12 +33,12 @@
 #include "util.h"
 #include "utilstrencodings.h"
 #include "hash.h"
-#include "governance-classes.h"
+#include "governance/governance-classes.h"
 #include "evo/specialtx.h"
 #include "evo/cbtx.h"
 #include "smartcontract-client.h"
 #include "smartcontract-server.h"
-#include "masternode-sync.h"
+#include "masternode/masternode-sync.h"
 #include <stdint.h>
 #include <univalue.h>
 #include "randomx_bbp.h"
@@ -1606,19 +1606,10 @@ UniValue getchaintips(const JSONRPCRequest& request)
        known blocks, and successively remove blocks that appear as pprev
        of another block.  */
     std::set<const CBlockIndex*, CompareBlocksByHeight> setTips;
-<<<<<<< HEAD
-		
-    BOOST_FOREACH(const PAIRTYPE(const uint256, CBlockIndex*)& item, mapBlockIndex)
-	{
-		if (item.second != NULL) setTips.insert(item.second);
-	}
-    BOOST_FOREACH(const PAIRTYPE(const uint256, CBlockIndex*)& item, mapBlockIndex)
-=======
     std::set<const CBlockIndex*> setOrphans;
     std::set<const CBlockIndex*> setPrevs;
 
     for (const std::pair<const uint256, CBlockIndex*>& item : mapBlockIndex)
->>>>>>> 351fbf65efc9459cb69a3c843cc205a8b94c95b3
     {
 		if (item.second != NULL)
 		{
@@ -3300,11 +3291,11 @@ UniValue exec(const JSONRPCRequest& request)
 			throw JSONRPCError(RPC_TYPE_ERROR, "Please sync first.");
 	    std::set<const CBlockIndex*, CompareBlocksByHeight> setTips;
 
-		BOOST_FOREACH(const PAIRTYPE(const uint256, CBlockIndex*)& item, mapBlockIndex)
+        for (const std::pair<const uint256, CBlockIndex*>& item : mapBlockIndex)
 		{
 			if (item.second != NULL) setTips.insert(item.second);
 		}
-		BOOST_FOREACH(const PAIRTYPE(const uint256, CBlockIndex*)& item, mapBlockIndex)
+        for (const std::pair<const uint256, CBlockIndex*>& item : mapBlockIndex)
 		{
 			if (item.second != NULL)
 			{
@@ -3318,7 +3309,7 @@ UniValue exec(const JSONRPCRequest& request)
 		}
 
 
-	    BOOST_FOREACH(const CBlockIndex* block, setTips)
+        for (const CBlockIndex* block : setTips)
 		{
 			if (block->nHeight < (chainActive.Tip()->nHeight - 1000))
 			{
@@ -3526,7 +3517,7 @@ UniValue exec(const JSONRPCRequest& request)
 	{
 		// Allows user to display a configuration value (useful if you are not sure if you entered a config value in your file)
 		std::string sArg = request.params[1].get_str();
-		std::string sValue = GetArg("-" + sArg, "");
+		std::string sValue = gArgs.GetArg("-" + sArg, "");
 		results.push_back(Pair("arg v2.0", sValue));
 	}
 	else if (sItem == "createpurse")
@@ -3771,7 +3762,7 @@ UniValue exec(const JSONRPCRequest& request)
 	else if (sItem == "lresearchers")
 	{
 		std::map<std::string, Researcher> r = GetPayableResearchers();
-		BOOST_FOREACH(const PAIRTYPE(const std::string, Researcher)& myResearcher, r)
+        for (const std::pair<const std::string, Researcher>& myResearcher, r)
 		{
 			results.push_back(Pair("cpid", myResearcher.second.cpid));
 			results.push_back(Pair("rac", myResearcher.second.rac));

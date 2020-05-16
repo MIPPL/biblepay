@@ -10,7 +10,7 @@
 #include "clientversion.h"
 #include "rpcpog.h"
 #include "netmessagemaker.h"
-#include "activemasternode.h"
+#include "masternode/activemasternode.h"
 #include "evo/deterministicmns.h"
 
 struct POSEScore

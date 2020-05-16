@@ -4,11 +4,11 @@
 
 #include "spork.h"
 #include "utilmoneystr.h"
-#include "masternode-payments.h"
+#include "masternode/masternode-payments.h"
 #include "masternodeconfig.h"
-#include "activemasternode.h"
-#include "governance-classes.h"
-#include "masternode-sync.h"
+#include "masternode/activemasternode.h"
+#include "governance/governance-classes.h"
+#include "masternode/masternode-sync.h"
 #include "smartcontract-server.h"
 #include "rpcpog.h"
 #include <boost/lexical_cast.hpp>
@@ -30,7 +30,7 @@ std::string GetSANDirectory2()
 {
 	 std::string prefix = CURRENCY_NAME;
 	 boost::to_lower(prefix);
-	 boost::filesystem::path pathConfigFile(GetArg("-conf", prefix + ".conf"));
+	 boost::filesystem::path pathConfigFile(gArgs.GetArg("-conf", prefix + ".conf"));
      if (!pathConfigFile.is_complete()) pathConfigFile = GetDataDir(false) / pathConfigFile;
 	 boost::filesystem::path dir = pathConfigFile.parent_path();
 	 std::string sDir = dir.string() + "/SAN/";
@@ -156,7 +156,7 @@ double GetCryptoPrice(std::string sSymbol)
 	int TERM_TYPE = 1;
 	std::string sC1 = HTTPSPost(false, 0, "", "", "api", GetSporkValue("bms"), GetSporkValue("getbmscryptoprice" + sSymbol), 
 		SSL_PORT, "", CONNECTION_TIMEOUT, TRANSMISSION_TIMEOUT, TERM_TYPE);
-	double dDebugLevel = cdbl(GetArg("-debuglevel", "0"), 0);
+	double dDebugLevel = cdbl(gArgs.GetArg("-debuglevel", "0"), 0);
 	if (dDebugLevel == 1)
 		LogPrintf("CryptoPrice %s %s", sSymbol, sC1);
 	std::string sPrice = ExtractXML(sC1, "<MIDPOINT>", "</MIDPOINT>");
@@ -234,7 +234,7 @@ int GetWCGMemberID(std::string sMemberName, std::string sAuthCode, double& nPoin
 
 Researcher GetResearcherByID(int nID)
 {
-    BOOST_FOREACH(const PAIRTYPE(const std::string, Researcher)& myResearcher, mvResearchers)
+    for (const std::pair<const std::string, Researcher>& myResearcher : mvResearchers)
     {
 		if (myResearcher.second.found && myResearcher.second.id == nID)
 		{
@@ -288,7 +288,7 @@ std::map<std::string, Researcher> GetPayableResearchers()
 	}
 	
 	// Payable Researchers
-	BOOST_FOREACH(const PAIRTYPE(const std::string, Researcher)& myResearcher, mvResearchers)
+    for (const std::pair<const std::string, Researcher>& myResearcher : mvResearchers)
     {
 		if (myResearcher.second.found)
 		{

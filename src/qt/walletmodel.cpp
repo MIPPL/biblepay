@@ -315,7 +315,7 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
 				std::string sAddrF = PubKeyToAddress(spkFoundation);
 				setAddress.insert(GUIUtil::TOQS(sAddrF));
            		++nAddresses;
-				LogPrint("net", "\nAdded 10percent Tithe to the transaction for %f to address %s ",(double)aTitheAmount/COIN, sAddrF);
+				LogPrint(BCLog::NET, "\nAdded 10percent Tithe to the transaction for %f to address %s ",(double)aTitheAmount/COIN, sAddrF);
 				nSundries += aTitheAmount;
 				vecSend.push_back(recFoundation);
 			}

@@ -317,7 +317,7 @@ int CommandLineRPC(int argc, char *argv[])
                 args.push_back(line);
         }
 		
-		bool fHeadlessPassword = GetBoolArg("-headlesspassword", false);
+		bool fHeadlessPassword = gArgs.GetBoolArg("-headlesspassword", false);
 		if (fHeadlessPassword)
 			args.push_back("autounlockpasswordlength");
 

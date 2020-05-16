@@ -643,8 +643,7 @@ void CPrivateSend::SyncTransaction(const CTransaction& tx, const CBlockIndex* pi
 
     // When tx is 0-confirmed or conflicted, posInBlock is SYNC_TRANSACTION_NOT_IN_BLOCK and nConfirmedHeight should be set to -1
     mapDSTX[txHash].SetConfirmedHeight(posInBlock == CMainSignals::SYNC_TRANSACTION_NOT_IN_BLOCK ? -1 : pindex->nHeight);
-    if (fDebugSpam)
-        LogPrint("privatesend", "CPrivateSend::SyncTransaction -- txid=%s\n", txHash.ToString());
+    LogPrint(BCLog::PRIVATESEND, "CPrivateSend::SyncTransaction -- txid=%s\n", txHash.ToString());
 }
 
 void CPrivateSend::BlockConnected(const std::shared_ptr<const CBlock>& pblock, const CBlockIndex* pindex, const std::vector<CTransactionRef>& vtxConflicted)

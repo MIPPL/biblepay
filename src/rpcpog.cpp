@@ -9,11 +9,11 @@
 #include "rpcpodc.h"
 #include "init.h"
 #include "bbpsocket.h"
-#include "activemasternode.h"
-#include "governance-classes.h"
-#include "governance.h"
-#include "masternode-sync.h"
-#include "masternode-payments.h"
+#include "masternode/activemasternode.h"
+#include "governance/governance-classes.h"
+#include "governance/governance.h"
+#include "masternode/masternode-sync.h"
+#include "masternode/masternode-payments.h"
 #include "messagesigner.h"
 #include "smartcontract-server.h"
 #include "smartcontract-client.h"
@@ -590,11 +590,11 @@ bool CreateExternalPurse(std::string& sError)
 	std::string sEncSecret = EncryptAES256(ssecret, sBoinc);
 	// Store the pubkey unencrypted and the privkey encrypted in the .conf file:		
 	WriteKey("externalpurse", sBoinc);
-	ForceSetArg("externalpurse", sBoinc);
+	gArgs.ForceSetArg("externalpurse", sBoinc);
 	WriteKey("externalprivkey" + sBoinc.substr(0,8), sEncSecret);
 	WriteKey("externalpubkey" + sBoinc.substr(0,8), sBoinc);
-	ForceSetArg("externalprivkey" + sBoinc.substr(0,8), sEncSecret);
-	ForceSetArg("externalpubkey" + sBoinc.substr(0,8), sBoinc);
+	gArgs.ForceSetArg("externalprivkey" + sBoinc.substr(0,8), sEncSecret);
+	gArgs.ForceSetArg("externalpubkey" + sBoinc.substr(0,8), sBoinc);
 	std::string sPubFile1 = GetEPArg(true);
 	LogPrintf("Rereading pubkey %s \n", sPubFile1);
 	return true;	
@@ -813,7 +813,7 @@ std::string GetActiveProposals()
 		// First ensure the proposals gov height has not passed yet
 		bool bIsPaid = nEpochHeight < nLastSuperblock;
 		std::string sReport = DescribeProposal(dProposal);
-		if (fDebugSpam && fDebug)
+		if ( fDebug)
 			LogPrintf("\nGetActiveProposals::Proposal %s , epochHeight %f, nLastSuperblock %f, IsPaid %f ", 
 					sReport, nEpochHeight, nLastSuperblock, (double)bIsPaid);
 		if (!bIsPaid)
@@ -1555,7 +1555,7 @@ bool CheckSporkSig(TxMessage t)
     bool bValid = (fSigValid && t.fNonceValid);
 	if (!bValid)
 	{
-		LogPrint("net", "CheckSporkSig:SigFailed - Type %s, Nonce %f, Time %f, Bad spork Sig %s on message %s on TXID %s \n", t.sMessageType.c_str(), t.nNonce, t.nTime, 
+		LogPrint(BCLog::NET, "CheckSporkSig:SigFailed - Type %s, Nonce %f, Time %f, Bad spork Sig %s on message %s on TXID %s \n", t.sMessageType.c_str(), t.nNonce, t.nTime, 
 			               t.sSporkSig.c_str(), t.sMessageValue.c_str(), t.sTxId.c_str());
 	}
 	return bValid;
@@ -1569,7 +1569,7 @@ bool CheckBusinessObjectSig(TxMessage t)
 		bool fBOSigValid = CheckStakeSignature(t.sBOSigner, t.sBOSig, t.sMessageValue + t.sNonce, sError);
    		if (!fBOSigValid)
 		{
-			LogPrint("net", "MemorizePrayers::BO_SignatureFailed - Type %s, Nonce %f, Time %f, Bad BO Sig %s on message %s on TXID %s \n", 
+			LogPrint(BCLog::NET, "MemorizePrayers::BO_SignatureFailed - Type %s, Nonce %f, Time %f, Bad BO Sig %s on message %s on TXID %s \n", 
 				t.sMessageType.c_str(),	t.nNonce, t.nTime, t.sBOSig.c_str(), t.sMessageValue.c_str(), t.sTxId.c_str());
 	   	}
 		return fBOSigValid;
@@ -1783,7 +1783,7 @@ void MemorizeBlockChainPrayers(bool fDuringConnectBlock, bool fSubThread, bool f
 			nDeserializedHeight = 0;
 		}
 	}
-	if (fDebugSpam && fDebug)
+	if ( fDebug)
 		LogPrintf("Memorizing prayers tip height %f @ time %f deserialized height %f ", chainActive.Tip()->nHeight, GetAdjustedTime(), nDeserializedHeight);
 
 	int nMaxDepth = chainActive.Tip()->nHeight;
@@ -1842,7 +1842,7 @@ void MemorizeBlockChainPrayers(bool fDuringConnectBlock, bool fSubThread, bool f
 			SerializePrayersToFile(nMaxDepth - 1);
 		}
 	}
-	if (fDebugSpam && fDebug)
+	if (fDebug)
 		LogPrintf("...Finished MemorizeBlockChainPrayers @ %f ", GetAdjustedTime());
 }
 
@@ -2007,7 +2007,7 @@ std::string HTTPSPost(bool bPost, int iThreadID, std::string sActionName, std::s
 	// The OpenSSL version of Post *only* works with SSL websites, hence the need for HTTPPost(2) (using BOOST).  The dev team is working on cleaning this up before the end of 2019 to have one standard version with cleaner code and less internal parts. //
 	try
 	{
-		double dDebugLevel = cdbl(GetArg("-devdebuglevel", "0"), 0);
+		double dDebugLevel = cdbl(gArgs.GetArg("-devdebuglevel", "0"), 0);
 	
 		std::map<std::string, std::string> mapRequestHeaders;
 		mapRequestHeaders["Miner"] = sDistinctUser;
@@ -2021,8 +2021,8 @@ std::string HTTPSPost(bool bPost, int iThreadID, std::string sActionName, std::s
 		mapRequestHeaders["OS"] = sOS;
 
 		mapRequestHeaders["SessionID"] = msSessionID;
-		mapRequestHeaders["WorkerID1"] = GetArg("-workerid", "");
-		mapRequestHeaders["WorkerID2"] = GetArg("-workeridfunded", "");
+		mapRequestHeaders["WorkerID1"] = gArgs.GetArg("-workerid", "");
+		mapRequestHeaders["WorkerID2"] = gArgs.GetArg("-workeridfunded", "");
 		mapRequestHeaders["HTTP_PROTO_VERSION"] = RoundToString(HTTP_PROTO_VERSION, 0);
 
 		BIO* bio;
@@ -2259,7 +2259,7 @@ bool WriteKey(std::string sKey, std::string sValue)
 	std::string sDelimiter = sOS == "WIN" ? "\r\n" : "\n";
 
     // Allows DAC to store the key value in the config file.
-    boost::filesystem::path pathConfigFile(GetArg("-conf", GetConfFileName()));
+    boost::filesystem::path pathConfigFile(gArgs.GetArg("-conf", GetConfFileName()));
     if (!pathConfigFile.is_complete()) pathConfigFile = GetDataDir(false) / pathConfigFile;
     if (!boost::filesystem::exists(pathConfigFile))  
 	{
@@ -2447,8 +2447,7 @@ void ProcessBLSCommand(CTransactionRef tx)
 {
 	std::string sXML = GetTransactionMessage(tx);
 	std::string sEnc = ExtractXML(sXML, "<blscommand>", "</blscommand>");
-	if (fDebugSpam)
-		LogPrintf("\nBLS Command %s %s ", sXML, sEnc);
+	LogPrintf("\nBLS Command %s %s ", sXML, sEnc);
 
 	if (msMasterNodeLegacyPrivKey.empty())
 		return;
@@ -2570,7 +2569,7 @@ CWalletTx CreateAntiBotNetTx(CBlockIndex* pindexLast, double nMinCoinAge, CReser
 		nReqCoins = 0;
 		nABNWeight = pwalletMain->GetAntiBotNetWalletWeight(nMinCoinAge, nReqCoins);
 		CAmount nBalance = pwalletMain->GetBalance();
-		if (fDebug && fDebugSpam)
+		if (fDebug)
 			LogPrintf("\nABN Tx for MinCoinAge %f = Total Bal %f, Needed %f, ABNWeight %f ", (double)nMinCoinAge, (double)nBalance/COIN, (double)nReqCoins/COIN, nABNWeight);
 
 		if (nReqCoins > nBalance)
@@ -2775,13 +2774,13 @@ int ReassessAllChains()
     int iProgress = 0;
     LOCK(cs_main);
     std::set<const CBlockIndex*, CompareBlocksByHeight> setTips;
-    BOOST_FOREACH(const PAIRTYPE(const uint256, CBlockIndex*)& item, mapBlockIndex)
+    for (const std::pair<const uint256, CBlockIndex*>& item : mapBlockIndex)
 	{
 		if (item.second != NULL) 
 			setTips.insert(item.second);
 	}
 
-    BOOST_FOREACH(const PAIRTYPE(const uint256, CBlockIndex*)& item, mapBlockIndex)
+    for (const std::pair<const uint256, CBlockIndex*>& item : mapBlockIndex)
     {
 		if (item.second != NULL)
 		{
@@ -2797,7 +2796,7 @@ int ReassessAllChains()
     int nBranchMin = -1;
     int nCountMax = INT_MAX;
 
-	BOOST_FOREACH(const CBlockIndex* block, setTips)
+    for (const CBlockIndex* block : setTips)
     {
         const CBlockIndex* pindexFork = chainActive.FindFork(block);
         const int branchLen = block->nHeight - chainActive.FindFork(block)->nHeight;
@@ -3158,7 +3157,7 @@ int LoadResearchers()
 	if (fDebug)
 		LogPrintf("LoadResearchers End %f", GetAdjustedTime());
 
-	if (fDebugSpam && false)
+	if (false)
 	{
 		LogPrintf("Researchers sz %f, %s ", b.Response.size(), b.Response);
 	}
@@ -3205,8 +3204,7 @@ int LoadResearchers()
 		{
 			r.found = true;
 			mvResearchers[r.cpid] = r;
-			if (fDebugSpam)
-				LogPrintf(";cpid %s - team %f, id %f, rac %f, \n", r.cpid, r.teamid, r.id, r.rac);
+            LogPrintf(";cpid %s - team %f, id %f, rac %f, \n", r.cpid, r.teamid, r.id, r.rac);
 		}
 	}
 	if (true || fDebug)
@@ -3280,7 +3278,7 @@ int GetWCGIdByCPID(std::string sSearch)
 
 int GetNextPODCTransmissionHeight(int height)
 {
-	int nFreq = (int)cdbl(GetArg("-dailygscfrequency", RoundToString(BLOCKS_PER_DAY, 0)), 0);
+	int nFreq = (int)cdbl(gArgs.GetArg("-dailygscfrequency", RoundToString(BLOCKS_PER_DAY, 0)), 0);
 	int nHeight = height - (height % nFreq) + (BLOCKS_PER_DAY / 2);
 	if (nHeight < height)
 		nHeight += BLOCKS_PER_DAY;
@@ -3308,8 +3306,7 @@ std::string GetResearcherCPID(std::string sSearch)
 		sResData = GetResDataBySearch(sSearch);
 	}
 	// Format = 0 sCPK + 1 CPK_Nickname  +  2 nTime +   3 HexSecurityCode + 4 sSignature + 5 wcg username  + 6 wcg_sec_code + 7 wcg userid + 8 = CPID;
-	if (fDebugSpam)
-		LogPrintf("\nGetResearcherCPID %s for %s\n", sResData, sCPK);
+	LogPrintf("\nGetResearcherCPID %s for %s\n", sResData, sCPK);
 	return GetResElement(sResData, 8);
 }
 
@@ -3349,13 +3346,13 @@ bool VerifyMemoryPoolCPID(CTransaction tx)
 
 std::string GetEPArg(bool fPublic)
 {
-	std::string sEPA = GetArg("-externalpurse", "");
+	std::string sEPA = gArgs.GetArg("-externalpurse", "");
 	if (sEPA.empty() || sEPA.length() < 8)
 		return std::string();
-	std::string sPubFile = GetArg("-externalpubkey" + sEPA.substr(0,8), "");
+	std::string sPubFile = gArgs.GetArg("-externalpubkey" + sEPA.substr(0,8), "");
 	if (fPublic)
 		return sPubFile;
-	std::string sPrivFile = GetArg("-externalprivkey" + sEPA.substr(0,8), "");
+	std::string sPrivFile = gArgs.GetArg("-externalprivkey" + sEPA.substr(0,8), "");
 	if (sPrivFile.empty())
 		return std::string();
 	std::string sUsable = DecryptAES256(sPrivFile, sEPA);
@@ -3442,8 +3439,7 @@ std::vector<WhaleStake> GetDWS(bool fIncludeMemoryPool)
 				if (w.found && w.RewardAmount > 0 && w.Amount > 0 && w.ActualDWU > 0)
 				{
 					wStakes.push_back(w);
-					if (fDebugSpam)
-						LogPrintf("\nDWS BurnTime %f, MaturityTime %f, TxID %s, Msg %s, Amount %f, Duration %f, DWU %f \n", 
+                    LogPrintf("\nDWS BurnTime %f, MaturityTime %f, TxID %s, Msg %s, Amount %f, Duration %f, DWU %f \n",
 							w.BurnTime, w.MaturityTime, w.TXID.GetHex(), w.XML, (double)w.Amount, w.Duration, w.DWU);
 				}
 			}
@@ -3452,7 +3448,7 @@ std::vector<WhaleStake> GetDWS(bool fIncludeMemoryPool)
 
 	if (fIncludeMemoryPool)
 	{
-		BOOST_FOREACH(const CTxMemPoolEntry& e, mempool.mapTx)
+        for (const CTxMemPoolEntry& e : mempool.mapTx)
 		{
 			const CTransaction& tx = e.GetTx();
 			CTransactionRef tx1 = MakeTransactionRef(std::move(tx));
@@ -3486,8 +3482,7 @@ CAmount GetAnnualDWSReward(int nHeight)
 	{
 		nDWS = nTotal * .64;
 	}
-	if (fDebugSpam)
-		LogPrintf("Annual Emission %f, DWS %f", (double)nTotal/COIN, (double)nDWS/COIN);
+	LogPrintf("Annual Emission %f, DWS %f", (double)nTotal/COIN, (double)nDWS/COIN);
 
 	return nDWS;
 }
@@ -3661,8 +3656,7 @@ bool VerifyDynamicWhaleStake(CTransactionRef tx, std::string& sError)
 
 	if (w.BurnHeight < (chainActive.Tip()->nHeight - 1) || w.BurnHeight > (chainActive.Tip()->nHeight + 1))
 	{
-		if (fDebugSpam)
-			LogPrintf("\nVerifyDynamicWhaleStake::REJECTED, Burn Height out of bounds. Current Height %f, Burn Height %f", chainActive.Tip()->nHeight, w.BurnHeight);
+        LogPrintf("\nVerifyDynamicWhaleStake::REJECTED, Burn Height out of bounds. Current Height %f, Burn Height %f", chainActive.Tip()->nHeight, w.BurnHeight);
 		sError = "Burn height out of bounds.";
 		return false;
 	}
@@ -3771,7 +3765,7 @@ double GetVinAge(int64_t nVINTime, int64_t nSpendTime, CAmount nAmount)
 double GetWhaleStakesInMemoryPool(std::string sCPK)
 {
 	double nTotal = 0;
-	BOOST_FOREACH(const CTxMemPoolEntry& e, mempool.mapTx)
+    for (const CTxMemPoolEntry& e : mempool.mapTx)
     {
         const CTransaction& tx = e.GetTx();
 		CTransactionRef tx1 = MakeTransactionRef(std::move(tx));
@@ -3796,7 +3790,7 @@ CoinVin GetCoinVIN(COutPoint o, int64_t nTxTime)
 
 	// Special case if the transaction is not in a block:
 
-    BOOST_FOREACH(const CTxMemPoolEntry& e, mempool.mapTx)
+    for (const CTxMemPoolEntry& e : mempool.mapTx)
     {
         const uint256& hash = e.GetTx().GetHash();
 		if (hash == o.hash)
