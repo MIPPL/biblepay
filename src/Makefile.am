@@ -55,7 +55,7 @@ LIBBITCOIN_COMMON=libbiblepay_common.a
 LIBBITCOIN_CONSENSUS=libbiblepay_consensus.a
 LIBBITCOIN_CLI=libbiblepay_cli.a
 LIBBITCOIN_UTIL=libbiblepay_util.a
-LIBBITCOIN_CRYPTO=crypto/libbiblepay_crypto.a
+LIBBITCOIN_CRYPTO_BASE=crypto/libbiblepay_crypto.a
 LIBBITCOINQT=qt/libbiblepayqt.a
 LIBSECP256K1=secp256k1/libsecp256k1.la
 
@@ -71,15 +71,15 @@ endif
 
 LIBBITCOIN_CRYPTO= $(LIBBITCOIN_CRYPTO_BASE)
 if ENABLE_SSE41
-LIBBITCOIN_CRYPTO_SSE41 = crypto/libdash_crypto_sse41.a
+LIBBITCOIN_CRYPTO_SSE41 = crypto/libbiblepay_crypto_sse41.a
 LIBBITCOIN_CRYPTO += $(LIBBITCOIN_CRYPTO_SSE41)
 endif
 if ENABLE_AVX2
-LIBBITCOIN_CRYPTO_AVX2 = crypto/libdash_crypto_avx2.a
+LIBBITCOIN_CRYPTO_AVX2 = crypto/libbiblepay_crypto_avx2.a
 LIBBITCOIN_CRYPTO += $(LIBBITCOIN_CRYPTO_AVX2)
 endif
 if ENABLE_SHANI
-LIBBITCOIN_CRYPTO_SHANI = crypto/libdash_crypto_shani.a
+LIBBITCOIN_CRYPTO_SHANI = crypto/libbiblepay_crypto_shani.a
 LIBBITCOIN_CRYPTO += $(LIBBITCOIN_CRYPTO_SHANI)
 endif
 
@@ -407,9 +407,9 @@ libbiblepay_wallet_a_SOURCES = \
   $(BITCOIN_CORE_H)
 
 # crypto primitives library
-crypto_libbiblepay_crypto_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_CONFIG_INCLUDES) $(PIC_FLAGS)
-crypto_libbiblepay_crypto_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS) $(PIC_FLAGS)
-crypto_libbiblepay_crypto_a_SOURCES = \
+crypto_libbiblepay_crypto_base_a_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_CONFIG_INCLUDES) $(PIC_FLAGS)
+crypto_libbiblepay_crypto_base_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS) $(PIC_FLAGS)
+crypto_libbiblepay_crypto_base_a_SOURCES = \
   crypto/aes.cpp \
   crypto/aes.h \
   crypto/chacha_poly_aead.h \
@@ -434,23 +434,23 @@ crypto_libbiblepay_crypto_a_SOURCES = \
   crypto/sha512.h
 
 if USE_ASM
-crypto_libdash_crypto_base_a_SOURCES += crypto/sha256_sse4.cpp
+crypto_libbiblepay_crypto_base_a_SOURCES += crypto/sha256_sse4.cpp
 endif
 
-crypto_libdash_crypto_sse41_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
-crypto_libdash_crypto_sse41_a_CPPFLAGS = $(AM_CPPFLAGS)
-crypto_libdash_crypto_sse41_a_CXXFLAGS += $(SSE41_CXXFLAGS)
-crypto_libdash_crypto_sse41_a_CPPFLAGS += -DENABLE_SSE41
-crypto_libdash_crypto_sse41_a_SOURCES = crypto/sha256_sse41.cpp
+crypto_libbiblepay_crypto_sse41_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+crypto_libbiblepay_crypto_sse41_a_CPPFLAGS = $(AM_CPPFLAGS)
+crypto_libbiblepay_crypto_sse41_a_CXXFLAGS += $(SSE41_CXXFLAGS)
+crypto_libbiblepay_crypto_sse41_a_CPPFLAGS += -DENABLE_SSE41
+crypto_libbiblepay_crypto_sse41_a_SOURCES = crypto/sha256_sse41.cpp
 
-crypto_libdash_crypto_avx2_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
-crypto_libdash_crypto_avx2_a_CPPFLAGS = $(AM_CPPFLAGS)
-crypto_libdash_crypto_avx2_a_CXXFLAGS += $(AVX2_CXXFLAGS)
-crypto_libdash_crypto_avx2_a_CPPFLAGS += -DENABLE_AVX2
-crypto_libdash_crypto_avx2_a_SOURCES = crypto/sha256_avx2.cpp
+crypto_libbiblepay_crypto_avx2_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+crypto_libbiblepay_crypto_avx2_a_CPPFLAGS = $(AM_CPPFLAGS)
+crypto_libbiblepay_crypto_avx2_a_CXXFLAGS += $(AVX2_CXXFLAGS)
+crypto_libbiblepay_crypto_avx2_a_CPPFLAGS += -DENABLE_AVX2
+crypto_libbiblepay_crypto_avx2_a_SOURCES = crypto/sha256_avx2.cpp
 
 # x11
-crypto_libbiblepay_crypto_a_SOURCES += \
+crypto_libbiblepay_crypto_base_a_SOURCES += \
   crypto/blake.c \
   crypto/bmw.c \
   crypto/cubehash.c \
@@ -665,7 +665,7 @@ biblepay_tx_LDADD += $(BACKTRACE_LIB) $(BOOST_LIBS) $(CRYPTO_LIBS) $(BLS_LIBS)
 # biblepayconsensus library #
 if BUILD_BITCOIN_LIBS
 include_HEADERS = script/biblepayconsensus.h
-libbiblepayconsensus_la_SOURCES = support/cleanse.cpp $(crypto_libbiblepay_crypto_a_SOURCES) $(libbiblepay_consensus_a_SOURCES)
+libbiblepayconsensus_la_SOURCES = support/cleanse.cpp $(crypto_libbiblepay_crypto_base_a_SOURCES) $(libbiblepay_consensus_a_SOURCES)
 
 if GLIBC_BACK_COMPAT
   libbiblepayconsensus_la_SOURCES += compat/glibc_compat.cpp
