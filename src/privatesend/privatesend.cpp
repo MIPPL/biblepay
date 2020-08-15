@@ -632,20 +632,6 @@ void CPrivateSend::TransactionAddedToMempool(const CTransactionRef& tx)
     UpdateDSTXConfirmedHeight(tx, -1);
 }
 
-void CPrivateSend::SyncTransaction(const CTransaction& tx, const CBlockIndex* pindex, int posInBlock)
-{
-    if (tx.IsCoinBase()) return;
-
-    LOCK2(cs_main, cs_mapdstx);
-
-    uint256 txHash = tx.GetHash();
-    if (!mapDSTX.count(txHash)) return;
-
-    // When tx is 0-confirmed or conflicted, posInBlock is SYNC_TRANSACTION_NOT_IN_BLOCK and nConfirmedHeight should be set to -1
-    mapDSTX[txHash].SetConfirmedHeight(posInBlock == CMainSignals::SYNC_TRANSACTION_NOT_IN_BLOCK ? -1 : pindex->nHeight);
-    LogPrint(BCLog::PRIVATESEND, "CPrivateSend::SyncTransaction -- txid=%s\n", txHash.ToString());
-}
-
 void CPrivateSend::BlockConnected(const std::shared_ptr<const CBlock>& pblock, const CBlockIndex* pindex, const std::vector<CTransactionRef>& vtxConflicted)
 {
     LOCK(cs_mapdstx);

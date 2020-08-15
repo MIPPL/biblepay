@@ -75,43 +75,6 @@ const char *ISLOCK="islock";
 const char *MNAUTH="mnauth";
 };
 
-static const char* ppszTypeName[] =
-{
-    "ERROR", // Should never occur
-    NetMsgType::TX,
-    NetMsgType::BLOCK,
-    "filtered block", // Should never occur
-    // Message types
-    // NOTE: include non-implmented here, we must keep this list in sync with enum in protocol.h
-    NetMsgType::TXLOCKREQUEST,
-    NetMsgType::TXLOCKVOTE,
-    NetMsgType::SPORK,
-    "unused inv type 7",
-    "unused inv type 8",
-    "unused inv type 9",
-    "unused inv type 10",
-    "unused inv type 11",
-    "unused inv type 12",
-    "unused inv type 13",
-    "unused inv type 14",
-    "unused inv type 15",
-    NetMsgType::DSTX,
-    NetMsgType::MNGOVERNANCEOBJECT,
-    NetMsgType::MNGOVERNANCEOBJECTVOTE,
-    "unused inv type 19",
-    "compact block", // Should never occur
-    NetMsgType::QFCOMMITMENT,
-    "qdcommit", // was only shortly used on testnet
-    NetMsgType::QCONTRIB,
-    NetMsgType::QCOMPLAINT,
-    NetMsgType::QJUSTIFICATION,
-    NetMsgType::QPCOMMITMENT,
-    "qdebugstatus", // was only shortly used on testnet
-    NetMsgType::QSIGREC,
-    NetMsgType::CLSIG,
-    NetMsgType::ISLOCK,
-};
-
 /** All known message types. Keep this in the same order as the list of
  * messages above and in protocol.h.
  */

@@ -64,7 +64,7 @@ bool CMasternodeConfig::read(std::string& strErrRet) {
             streamConfig.close();
             return false;
         }
-        int mainnetDefaultPort = Params(CBaseChainParams::MAIN).GetDefaultPort();
+        int mainnetDefaultPort = defaultChainParams->GetDefaultPort();
         if(Params().NetworkIDString() == CBaseChainParams::MAIN) {
             if(port != mainnetDefaultPort && fEnforceSanctuaryPort) 
 			{

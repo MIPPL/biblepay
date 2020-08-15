@@ -2767,6 +2767,12 @@ bool IsPODCDenominated(CAmount nAmount)
 	bool fPODCDenominated = Contains(sAmt, ".001");
 	return fPODCDenominated;
 }
+
+CAmount CWallet::GetAccountBalance(const std::string& strAccount, int nMinDepth, const isminefilter& filter, bool fAddLocked)
+{
+    return GetLegacyBalance(filter, nMinDepth, &strAccount, fAddLocked);
+}
+
 // Calculate total balance in a different way from GetBalance. The biggest
 // difference is that GetBalance sums up all unspent TxOuts paying to the
 // wallet, while this sums up both spent and unspent TxOuts paying to the
@@ -3890,7 +3896,9 @@ static CFeeRate GetDiscardRate(const CBlockPolicyEstimator& estimator)
 bool CWallet::CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet,
                                 int& nChangePosInOut, std::string& strFailReason, const CCoinControl& coin_control, bool sign, int nExtraPayloadSize,
                                 // DAC Params
-                                std::string sOptPrayerData, double dMinCoinAge, CAmount nMinSpend, CAmount nExactSpend, std::string sPursePubKey)
+                                std::string sOptPrayerData
+                                //double dMinCoinAge, CAmount nMinSpend, CAmount nExactSpend
+                                , std::string sPursePubKey)
 {
     CAmount nValue = 0;
     int nChangePosRequest = nChangePosInOut;
@@ -5072,7 +5080,7 @@ void CWallet::MarkReserveKeysAsUsed(int64_t keypool_id)
     }
 }
 
-void CWallet::GetScriptForMining(std::shared_ptr<CReserveScript> &script)
+void CWallet::ScriptForMining(std::shared_ptr<CReserveScript> &script)
 {
     std::shared_ptr<CReserveKey> rKey = std::make_shared<CReserveKey>(this);
     CPubKey pubkey;

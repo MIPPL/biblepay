@@ -173,7 +173,7 @@ public:
     CAmount GetPaymentsTotalAmount();
 
     bool IsValid(const CTransaction& txNew, int nBlockHeight, CAmount blockReward);
-    bool IsExpired() const;
+    bool IsExpired();
 };
 
 #endif

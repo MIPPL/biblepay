@@ -328,9 +328,8 @@ CWalletTx CreateGSCClientTransmission(std::string sCampaign, std::string sDiary,
 	sXML += "<gscsig>" + sSignature + "</gscsig><abncpk>" + sCPK + "</abncpk><gsccampaign>" + sCampaign + "</gsccampaign><abnwgt>" 
 		+ RoundToString(nTargetCoinAge, 0) + "</abnwgt><diary>" + sDiary + "</diary>";
 	std::string strError;
-	
-	bool fCreated = pwalletMain->CreateTransaction(vecSend, wtx, reservekey, nFeeRequired, nChangePosRet, strError, NULL, true, 
-		ALL_COINS, false, 0, sXML, nTargetCoinAge, nTargetSpend, .01, sPubPurseKey);
+	CCoinControl coinControl;
+	bool fCreated = pwalletMain->CreateTransaction(vecSend, wtx, reservekey, nFeeRequired, nChangePosRet, strError, coinControl, true, 0, sXML,  sPubPurseKey);
 
 	if (!fCreated)    
 	{
@@ -453,7 +452,7 @@ bool CreateGSCTransmission(bool fForce, std::string sDiary, std::string& sError,
 		return false;
 	}
 	CValidationState state;
-	if (!pwalletMain->CommitTransaction(wtx, reservekey, g_connman.get(), state,  NetMsgType::TX))
+	if (!pwalletMain->CommitTransaction(wtx, reservekey, g_connman.get(), state))
 	{
 			LogPrintf("\nCreateGSCTransmission::Unable to Commit transaction for campaign %s - %s", sSpecificCampaignName, wtx.tx->GetHash().GetHex());
 			sError = "GSC Commit failed " + sSpecificCampaignName;

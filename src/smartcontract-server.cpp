@@ -1223,7 +1223,7 @@ bool SubmitGSCTrigger(std::string sHex, std::string& gobjecthash, std::string& s
 	bool fMissingConfirmations;
     {
         LOCK(cs_main);
-        if (!govobj.IsValidLocally(strError, fMissingMasternode, fMissingConfirmations, true) && !fMissingConfirmations) 
+        if (!govobj.IsValidLocally(strError, fMissingConfirmations, true) && !fMissingConfirmations) 
 		{
             sError = "gobject(submit) -- Object submission rejected because object is not valid - hash = " + strHash + ", strError = " + strError;
 		    return false;

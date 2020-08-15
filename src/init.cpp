@@ -454,7 +454,7 @@ std::string HelpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-blocknotify=<cmd>", _("Execute command when the best block changes (%s in cmd is replaced by block hash)"));
     if (showDebug)
         strUsage += HelpMessageOpt("-blocksonly", strprintf(_("Whether to operate in a blocks only mode (default: %u)"), DEFAULT_BLOCKSONLY));
-    strUsage +=HelpMessageOpt("-assumevalid=<hex>", strprintf(_("If this block is in the chain assume that it and its ancestors are valid and potentially skip their script verification (0 to verify all, default: %s, testnet: %s)"), Params(CBaseChainParams::MAIN).GetConsensus().defaultAssumeValid.GetHex(), Params(CBaseChainParams::TESTNET).GetConsensus().defaultAssumeValid.GetHex()));
+    strUsage +=HelpMessageOpt("-assumevalid=<hex>", strprintf(_("If this block is in the chain assume that it and its ancestors are valid and potentially skip their script verification (0 to verify all, default: %s, testnet: %s)"), defaultChainParams->GetConsensus().defaultAssumeValid.GetHex(), testnetChainParams->GetConsensus().defaultAssumeValid.GetHex()));
     strUsage += HelpMessageOpt("-conf=<file>", strprintf(_("Specify configuration file (default: %s)"), GetConfFileName()));
     if (mode == HMM_BITCOIND)
     {
@@ -636,7 +636,7 @@ std::string HelpMessage(HelpMessageMode mode)
 
     strUsage += HelpMessageGroup(_("Node relay options:"));
     if (showDebug) {
-        strUsage += HelpMessageOpt("-acceptnonstdtxn", strprintf("Relay and mine \"non-standard\" transactions (%sdefault: %u)", "testnet/regtest only; ", !Params(CBaseChainParams::TESTNET).RequireStandard()));
+        strUsage += HelpMessageOpt("-acceptnonstdtxn", strprintf("Relay and mine \"non-standard\" transactions (%sdefault: %u)", "testnet/regtest only; ", !testnetChainParams->RequireStandard()));
         strUsage += HelpMessageOpt("-incrementalrelayfee=<amt>", strprintf("Fee rate (in %s/kB) used to define cost of relay, used for mempool limiting and BIP 125 replacement. (default: %s)", CURRENCY_NAME, FormatMoney(DEFAULT_INCREMENTAL_RELAY_FEE)));
         strUsage += HelpMessageOpt("-dustrelayfee=<amt>", strprintf("Fee rate (in %s/kB) used to defined dust, the value of an output such that it will cost about 1/3 of its value in fees at this fee rate to spend it. (default: %s)", CURRENCY_NAME, FormatMoney(DUST_RELAY_TX_FEE)));
     }
@@ -2146,6 +2146,7 @@ bool AppInitMain(boost::thread_group& threadGroup, CScheduler& scheduler)
 		{
 			LogPrintf("\n*** SANCTUARY WAS STARTED WITH NO MASTERNODEBLSPRIVKEY!  This sanctuary will fail.  *** This node may be waiting for the masternodeblsprivkey to be sent via the blscommand. \n");
 			// Reserved: return InitError(_("You must specify a masternodeblsprivkey in the configuration. Please see documentation for help."));
+        }
 
 #ifdef ENABLE_WALLET
         if (!vpwallets.empty()) {
@@ -2397,7 +2398,7 @@ bool AppInitMain(boost::thread_group& threadGroup, CScheduler& scheduler)
     uiInterface.InitMessage(_("Starting Miner..."));
     
     // Generate coins - Proof-of-Bible-Hash (POBH) - in the background
-    GenerateCoins=(gArgs.GetBoolArg("-gen", false), GetArg("-genproclimit", 0), chainparams);
+    GenerateCoins(gArgs.GetBoolArg("-gen", false), gArgs.GetArg("-genproclimit", 0), chainparams);
 
     SetRPCWarmupFinished();
     uiInterface.InitMessage(_("Done loading"));

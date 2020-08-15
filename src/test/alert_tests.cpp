@@ -159,7 +159,7 @@ BOOST_AUTO_TEST_CASE(GenerateAlerts)
 BOOST_AUTO_TEST_CASE(AlertApplies)
 {
     SetMockTime(11);
-    const std::vector<unsigned char>& alertKey = Params(CBaseChainParams::MAIN).AlertKey();
+    const std::vector<unsigned char>& alertKey = defaultChainParams->AlertKey();
 
     for (const auto& alert : alerts)
     {
@@ -200,7 +200,7 @@ BOOST_AUTO_TEST_CASE(AlertApplies)
 BOOST_AUTO_TEST_CASE(AlertNotify)
 {
     SetMockTime(11);
-    const std::vector<unsigned char>& alertKey = Params(CBaseChainParams::MAIN).AlertKey();
+    const std::vector<unsigned char>& alertKey = defaultChainParams->AlertKey();
 
     boost::filesystem::path temp = GetTempPath() /
         boost::filesystem::unique_path("alertnotify-%%%%.txt");

@@ -572,7 +572,6 @@ static const CRPCCommand commands[] =
   //  --------------------- ------------------------  -----------------------  ------ ----------
     { CURRENCY_NAME,               "masternode",             &masternode,             true,  {} },
     { CURRENCY_NAME,               "masternodelist",         &masternodelist,         true,  {} },
-    { CURRENCY_NAME,               "getpoolinfo",            &getpoolinfo,            true,  {} },
 };
 
 void RegisterMasternodeRPCCommands(CRPCTable &t)

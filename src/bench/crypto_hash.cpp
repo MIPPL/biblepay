@@ -1,9 +1,6 @@
 // Copyright (c) 2016 The Bitcoin Core developers
-<<<<<<< HEAD
-// Copyright (c) 2018 The DAC Core developers
-=======
 // Copyright (c) 2018-2020 The Dash Core developers
->>>>>>> 351fbf65efc9459cb69a3c843cc205a8b94c95b3
+// Copyright (c) 2018-2020 The DAC Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 

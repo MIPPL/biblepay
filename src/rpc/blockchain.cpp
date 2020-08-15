@@ -34,8 +34,13 @@
 #include "utilstrencodings.h"
 #include "hash.h"
 #include "governance/governance-classes.h"
+
 #include "evo/specialtx.h"
 #include "evo/cbtx.h"
+
+#include "llmq/quorums_chainlocks.h"
+#include "llmq/quorums_instantsend.h"
+
 #include "smartcontract-client.h"
 #include "smartcontract-server.h"
 #include "masternode/masternode-sync.h"
@@ -60,9 +65,11 @@ static std::mutex cs_blockchange;
 static std::condition_variable cond_blockchange;
 static CUpdatedBlock latestblock;
 
-
-
 extern void TxToJSON(const CTransaction& tx, const uint256 hashBlock, UniValue& entry);
+UniValue protx_register(const JSONRPCRequest& request);
+UniValue protx(const JSONRPCRequest& request);
+UniValue _bls(const JSONRPCRequest& request);
+UniValue hexblocktocoinbase(const JSONRPCRequest& request);
 
 double GetDifficulty(const CBlockIndex* blockindex)
 {
@@ -1029,15 +1036,12 @@ UniValue getblock(const JSONRPCRequest& request)
             "     \"transactionid\"     (string) The transaction id\n"
             "     ,...\n"
             "  ],\n"
-<<<<<<< HEAD
-=======
             "  \"cbTx\" : {             (json object) The coinbase special transaction \n"
             "     \"version\"           (numeric) The coinbase special transaction version\n"
             "     \"height\"            (numeric) The block height\n"
             "     \"merkleRootMNList\" : \"xxxx\", (string) The merkle root of the masternode list\n"
             "     \"merkleRootQuorums\" : \"xxxx\", (string) The merkle root of the quorum list\n"
             "  },\n"
->>>>>>> 351fbf65efc9459cb69a3c843cc205a8b94c95b3
             "  \"time\" : ttt,          (numeric) The block time in seconds since epoch (Jan 1 1970 GMT)\n"
             "  \"mediantime\" : ttt,    (numeric) The median block time in seconds since epoch (Jan 1 1970 GMT)\n"
             "  \"nonce\" : n,           (numeric) The nonce\n"
@@ -1081,21 +1085,9 @@ UniValue getblock(const JSONRPCRequest& request)
 		hash = bindex->GetBlockHash();
 	}
    
-    if (mapBlockIndex.count(hash) == 0)
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
-
     CBlockIndex* pblockindex = mapBlockIndex[hash];
-<<<<<<< HEAD
-
-    if (fHavePruned && !(pblockindex->nStatus & BLOCK_HAVE_DATA) && pblockindex->nTx > 0)
-        throw JSONRPCError(RPC_INTERNAL_ERROR, "Block not available (pruned data)");
-
-    if(!ReadBlockFromDisk(block, pblockindex, Params().GetConsensus()))
-        throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't read block from disk");
-=======
     const CBlock block = GetBlockChecked(pblockindex);
->>>>>>> 351fbf65efc9459cb69a3c843cc205a8b94c95b3
-
+    
     if (verbosity <= 0)
     {
         CDataStream ssBlock(SER_NETWORK, PROTOCOL_VERSION);
@@ -1517,7 +1509,6 @@ UniValue getblockchaininfo(const JSONRPCRequest& request)
     softforks.push_back(SoftForkDesc("bip34", 2, tip, consensusParams));
     softforks.push_back(SoftForkDesc("bip66", 3, tip, consensusParams));
     softforks.push_back(SoftForkDesc("bip65", 4, tip, consensusParams));
-<<<<<<< HEAD
 
 	bool fDIP0008Active = VersionBitsState(chainActive.Tip()->pprev, Params().GetConsensus(), Consensus::DEPLOYMENT_DIP0008, versionbitscache) == THRESHOLD_ACTIVE;
 	bool fChainLocksActive = sporkManager.IsSporkActive(SPORK_19_CHAINLOCKS_ENABLED);
@@ -1536,14 +1527,14 @@ UniValue getblockchaininfo(const JSONRPCRequest& request)
 	*/
     BIP9SoftForkDescPushBack(bip9_softforks, "dip0003", consensusParams, Consensus::DEPLOYMENT_DIP0003);
     BIP9SoftForkDescPushBack(bip9_softforks, "bip147", consensusParams, Consensus::DEPLOYMENT_BIP147);
-=======
+
     // sorted by start time/bit
     BIP9SoftForkDescPushBack(bip9_softforks, "csv", consensusParams, Consensus::DEPLOYMENT_CSV);
     BIP9SoftForkDescPushBack(bip9_softforks, "dip0001", consensusParams, Consensus::DEPLOYMENT_DIP0001);
     BIP9SoftForkDescPushBack(bip9_softforks, "bip147", consensusParams, Consensus::DEPLOYMENT_BIP147);
     BIP9SoftForkDescPushBack(bip9_softforks, "dip0003", consensusParams, Consensus::DEPLOYMENT_DIP0003);
     BIP9SoftForkDescPushBack(bip9_softforks, "dip0008", consensusParams, Consensus::DEPLOYMENT_DIP0008);
->>>>>>> 351fbf65efc9459cb69a3c843cc205a8b94c95b3
+
     obj.push_back(Pair("softforks",             softforks));
     obj.push_back(Pair("bip9_softforks", bip9_softforks));
 
@@ -2284,7 +2275,7 @@ UniValue exec(const JSONRPCRequest& request)
 		std::string sValue = request.params[3].get_str();
 		if (sType.empty() || sPrimaryKey.empty() || sValue.empty())
 			throw std::runtime_error(sError);
-		sError;
+
 		double dFee = fProd ? 10 : 5001;
     	std::string sResult = SendBlockchainMessage(sType, sPrimaryKey, sValue, dFee, true, "", sError);
 		results.push_back(Pair("Sent", sValue));
@@ -2523,10 +2514,11 @@ UniValue exec(const JSONRPCRequest& request)
 		bool fUseInstantSend = false;
 		bool fUsePrivateSend = false;
 		CValidationState state;
-		bool fCreated = pwalletMain->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired, nChangePosRet, strFailReason, NULL, true, fUsePrivateSend ? ONLY_DENOMINATED : ALL_COINS, fUseInstantSend);
+        CCoinControl coinControl;
+		bool fCreated = pwalletMain->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired, nChangePosRet, strFailReason, coinControl, true);
 		if (!fCreated)
 			throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, strFailReason);
-		if (!pwalletMain->CommitTransaction(wtx, keyChange, g_connman.get(), state, NetMsgType::TX))
+		if (!pwalletMain->CommitTransaction(wtx, keyChange, g_connman.get(), state))
 			throw JSONRPCError(RPC_WALLET_ERROR, "Transaction commit failed");
 		results.push_back(Pair("txid", wtx.GetHash().GetHex()));
 	}
@@ -3634,9 +3626,9 @@ UniValue exec(const JSONRPCRequest& request)
 			CAmount nFeeRequired = 0;
 
 			CReserveKey reserveKey(pwalletMain);
-	
-			bool fSent = pwalletMain->CreateTransaction(vecDryRun, wtx, reserveKey, nFeeRequired, nChangePosRet, sError, NULL, true, 
-				ALL_COINS, fInstantSend, 0, sPayload, dMinCoinAge, 0, 0, "");
+            CCoinControl coinControl;
+            coinControl.nCoinType = CoinType::ALL_COINS;
+			bool fSent = pwalletMain->CreateTransaction(vecDryRun, wtx, reserveKey, nFeeRequired, nChangePosRet, sError, coinControl, true, 0, sPayload, "");
 
 			// Verify the transaction first:
 			std::string sError2;
@@ -3649,7 +3641,7 @@ UniValue exec(const JSONRPCRequest& request)
 			else
 			{
 				CValidationState state;
-				if (!pwalletMain->CommitTransaction(wtx, reserveKey, g_connman.get(), state, NetMsgType::TX))
+				if (!pwalletMain->CommitTransaction(wtx, reserveKey, g_connman.get(), state))
 				{
 					throw JSONRPCError(RPC_WALLET_ERROR, "Whale-Stake-Commit failed.");
 				}
@@ -3762,7 +3754,7 @@ UniValue exec(const JSONRPCRequest& request)
 	else if (sItem == "lresearchers")
 	{
 		std::map<std::string, Researcher> r = GetPayableResearchers();
-        for (const std::pair<const std::string, Researcher>& myResearcher, r)
+        for (const std::pair<const std::string, Researcher>& myResearcher : r)
 		{
 			results.push_back(Pair("cpid", myResearcher.second.cpid));
 			results.push_back(Pair("rac", myResearcher.second.rac));

@@ -362,7 +362,7 @@ public:
  
         assert(genesis.hashMerkleRoot == uint256S("0x02b05f3b8a7168bcf83b888e0092446b248b2641bd9844b5d12a45eaa2765725"));
 
-		vSeeds.push_back(CDNSSeedData(DOMAIN_NAME, "node." + DOMAIN_NAME));
+		vSeeds.push_back(CDNSSeedData("node." + DOMAIN_NAME, false));
 
         // DAC addresses start with 'B'
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1, 25);
@@ -371,27 +371,22 @@ public:
         // DAC private keys start with '7' or 'X'
         base58Prefixes[SECRET_KEY] =     std::vector<unsigned char>(1, 182);
         // DAC BIP32 pubkeys start with 'xpub' (Bitcoin defaults)
-        base58Prefixes[EXT_PUBLIC_KEY] = boost::assign::list_of(0x04)(0x88)(0xB2)(0x1E).convert_to_container<std::vector<unsigned char> >();
+        base58Prefixes[EXT_PUBLIC_KEY] = { 0x04, 0x88, 0xB2, 0x1E };
         // DAC BIP32 prvkeys start with 'xprv' (Bitcoin defaults)
-        base58Prefixes[EXT_SECRET_KEY] = boost::assign::list_of(0x04)(0x88)(0xAD)(0xE4).convert_to_container<std::vector<unsigned char> >();
+        base58Prefixes[EXT_SECRET_KEY] = { 0x04, 0x88, 0xAD, 0xE4 };
 
         // DAC BIP44 coin type is '5'
         nExtCoinType = 10;
         vFixedSeeds = std::vector<SeedSpec6>(pnSeed6_main, pnSeed6_main + ARRAYLEN(pnSeed6_main));
 
         // long living quorum params
-	    consensus.llmqs[Consensus::LLMQ_5_60] = llmq5_60;
         consensus.llmqs[Consensus::LLMQ_50_60] = llmq50_60;
-		consensus.llmqChainLocks = Consensus::LLMQ_50_60;
-        consensus.llmqForInstantSend = Consensus::LLMQ_50_60;
-		
-        fMiningRequiresPeers = true;
-
         consensus.llmqs[Consensus::LLMQ_400_60] = llmq400_60;
         consensus.llmqs[Consensus::LLMQ_400_85] = llmq400_85;
         consensus.llmqTypeChainLocks = Consensus::LLMQ_400_60;
         consensus.llmqTypeInstantSend = Consensus::LLMQ_50_60;
-
+		
+        fMiningRequiresPeers = true;
         fDefaultConsistencyChecks = false;
         fRequireStandard = true;
         fRequireRoutableExternalIP = true;
@@ -405,20 +400,21 @@ public:
         fBIP9CheckMasternodesUpgraded = true;
       	
 		checkpointData = (CCheckpointData){
-			boost::assign::map_list_of
-				(7, uint256S("0x00022b1be28b1deb9a51d4d69f3fa393f4ea36621039b6313a6c0796546621de"))
-				(120, uint256S("0x00002fc6c9e4889a8d1a9bd5919a6bd4a4b09091e55049480509da14571e5653"))
-				(6999, uint256S("0x000000dfbcdec4e6b0ab899f04d7ce8e4d8bc8a725a47169b626acd207ccea8d"))
-				(18900, uint256S("0x94a1ff5e84a31219d5472536215f5a77b00cfd61f3fb99d0e9d3ab392f2ed2a6"))
-				(20900, uint256S("0x23d0b5887ca89fc2dddb2f34810675cb1826371172a91b1211be4677fd260490"))
-				(21650, uint256S("0x756e18f6a20d02d7af0a32c5705960d58adc4daba24c6a7dd9a8b80776bcca73"))
-				(21960, uint256S("0xdd7e0acd7b9569b6fbf84a8262bb5fe3ea28af259f12d060acbcd62d4241fb51"))
-				(32500, uint256S("0xacb4534f70da9624fee2b9032d2fe47fe6d7d3e8cffdbfbca4d0a3a63394045a"))
-				(33460, uint256S("0xe64ff92ae97c2978c14d97ae45c618c1f2140339ce9ccb770945d3efb7d5e0f5"))
-				(63000, uint256S("0x1ef6f6e5d803cf04f84a4377365db6cefe82a775a9a596029db7d23fa3652f57"))
-				(105028, uint256S("0x2d38a145444c5e880209fe6a1ee1b09542f5438f50ca8736b20bafc5c552d79b"))
-				(119000, uint256S("0x527a086d639b315e4eb03cb52d394a809654d072387c5cb73401799cb5998f90"))
-				(145000, uint256S("0xe830a524fc6a71aa0c3171db1ef592893f84de65fdcda57ddff8b378dcbda12f"))
+            {
+                {7,     uint256S("0x00022b1be28b1deb9a51d4d69f3fa393f4ea36621039b6313a6c0796546621de")},
+                {120,   uint256S("0x00002fc6c9e4889a8d1a9bd5919a6bd4a4b09091e55049480509da14571e5653")},
+                {6999,  uint256S("0x000000dfbcdec4e6b0ab899f04d7ce8e4d8bc8a725a47169b626acd207ccea8d")},
+                {18900, uint256S("0x94a1ff5e84a31219d5472536215f5a77b00cfd61f3fb99d0e9d3ab392f2ed2a6")},
+                {20900, uint256S("0x23d0b5887ca89fc2dddb2f34810675cb1826371172a91b1211be4677fd260490")},
+                {21650, uint256S("0x756e18f6a20d02d7af0a32c5705960d58adc4daba24c6a7dd9a8b80776bcca73")},
+                {21960, uint256S("0xdd7e0acd7b9569b6fbf84a8262bb5fe3ea28af259f12d060acbcd62d4241fb51")},
+                {32500, uint256S("0xacb4534f70da9624fee2b9032d2fe47fe6d7d3e8cffdbfbca4d0a3a63394045a")},
+                {33460, uint256S("0xe64ff92ae97c2978c14d97ae45c618c1f2140339ce9ccb770945d3efb7d5e0f5")},
+                {63000, uint256S("0x1ef6f6e5d803cf04f84a4377365db6cefe82a775a9a596029db7d23fa3652f57")},
+                {105028,uint256S("0x2d38a145444c5e880209fe6a1ee1b09542f5438f50ca8736b20bafc5c552d79b")},
+                {119000,uint256S("0x527a086d639b315e4eb03cb52d394a809654d072387c5cb73401799cb5998f90")},
+                {145000,uint256S("0xe830a524fc6a71aa0c3171db1ef592893f84de65fdcda57ddff8b378dcbda12f")},
+            }
 		};
 
         chainTxData = ChainTxData{
@@ -563,8 +559,8 @@ public:
 
         vSeeds.clear();
         // nodes with support for servicebits filtering should be at the top
-        vSeeds.push_back(CDNSSeedData("dac.io",  "testnet-seed.dac.io"));
-        vSeeds.push_back(CDNSSeedData("dac.io", "test.dnsseed.masternode.io"));
+        vSeeds.push_back(CDNSSeedData("testnet-seed.dac.io", false));
+        vSeeds.push_back(CDNSSeedData("test.dnsseed.masternode.io", false ));
 
         // Testnet DAC addresses start with 'y'
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,140);
@@ -573,31 +569,27 @@ public:
         // Testnet private keys start with '9' or 'c' (Bitcoin defaults)
         base58Prefixes[SECRET_KEY] =     std::vector<unsigned char>(1,239);
         // Testnet DAC BIP32 pubkeys start with 'tpub' (Bitcoin defaults)
-        base58Prefixes[EXT_PUBLIC_KEY] = boost::assign::list_of(0x04)(0x35)(0x87)(0xCF).convert_to_container<std::vector<unsigned char> >();
+        base58Prefixes[EXT_PUBLIC_KEY] = { 0x04, 0x35, 0x87, 0xCF };
         // Testnet DAC BIP32 prvkeys start with 'tprv' (Bitcoin defaults)
-        base58Prefixes[EXT_SECRET_KEY] = boost::assign::list_of(0x04)(0x35)(0x83)(0x94).convert_to_container<std::vector<unsigned char> >();
+        base58Prefixes[EXT_SECRET_KEY] ={ 0x04, 0x35, 0x83, 0x94 };
 
         // Testnet DAC BIP44 coin type is '1' (All coin's testnet default)
         nExtCoinType = 1;
 
         // long living quorum params
-	    consensus.llmqs[Consensus::LLMQ_5_60] = llmq5_60;
-        consensus.llmqs[Consensus::LLMQ_50_60] = llmq50_60;
-		consensus.llmqChainLocks = Consensus::LLMQ_5_60;
-        consensus.llmqForInstantSend = Consensus::LLMQ_5_60;
-
-        fMiningRequiresPeers = false;
         consensus.llmqs[Consensus::LLMQ_400_60] = llmq400_60;
         consensus.llmqs[Consensus::LLMQ_400_85] = llmq400_85;
         consensus.llmqTypeChainLocks = Consensus::LLMQ_50_60;
         consensus.llmqTypeInstantSend = Consensus::LLMQ_50_60;
 
+        fMiningRequiresPeers = false;
         fDefaultConsistencyChecks = false;
         fRequireStandard = false;
         fRequireRoutableExternalIP = true;
         fMineBlocksOnDemand = false;
         fAllowMultipleAddressesFromGroup = false;
         fAllowMultiplePorts = true;
+        
 
         nPoolMinParticipants = 3;
         nPoolMaxParticipants = 5;
@@ -609,10 +601,11 @@ public:
 
 		checkpointData = (CCheckpointData)
 		{
-			boost::assign::map_list_of
-				(1,     uint256S("0xde31388eddd9e0ea515353628a0ca1f167466f09c45b10354de10459c7c018f2"))
-				(5000,  uint256S("0xc63bfaaddcb4714c594b701ae8bd6320cef3221df7b33d781d0400ca5a1348b9"))
-				(18610, uint256S("0x778067c8239f02166519359a82d2e0b5bea19a94df7344442dad9fb65ff013f8"))
+			{
+                { 1,     uint256S("0xde31388eddd9e0ea515353628a0ca1f167466f09c45b10354de10459c7c018f2")},
+                { 5000,  uint256S("0xc63bfaaddcb4714c594b701ae8bd6320cef3221df7b33d781d0400ca5a1348b9")},
+                { 18610, uint256S("0x778067c8239f02166519359a82d2e0b5bea19a94df7344442dad9fb65ff013f8")},
+            }
 		};
 
         chainTxData = ChainTxData{
@@ -740,9 +733,9 @@ public:
         // Testnet private keys start with '9' or 'c' (Bitcoin defaults)
         base58Prefixes[SECRET_KEY] =     std::vector<unsigned char>(1,239);
         // Testnet DAC BIP32 pubkeys start with 'tpub' (Bitcoin defaults)
-        base58Prefixes[EXT_PUBLIC_KEY] = boost::assign::list_of(0x04)(0x35)(0x87)(0xCF).convert_to_container<std::vector<unsigned char> >();
+        base58Prefixes[EXT_PUBLIC_KEY] = { 0x04, 0x35, 0x87, 0xCF };
         // Testnet DAC BIP32 prvkeys start with 'tprv' (Bitcoin defaults)
-        base58Prefixes[EXT_SECRET_KEY] = boost::assign::list_of(0x04)(0x35)(0x83)(0x94).convert_to_container<std::vector<unsigned char> >();
+        base58Prefixes[EXT_SECRET_KEY] = { 0x04, 0x35, 0x83, 0x94 };
 
         // Testnet DAC BIP44 coin type is '1' (All coin's testnet default)
         nExtCoinType = 1;
@@ -754,6 +747,7 @@ public:
         consensus.llmqTypeChainLocks = Consensus::LLMQ_50_60;
         consensus.llmqTypeInstantSend = Consensus::LLMQ_50_60;
 
+        fMiningRequiresPeers = false;
         fDefaultConsistencyChecks = false;
         fRequireStandard = false;
         fMineBlocksOnDemand = false;
@@ -900,9 +894,9 @@ public:
         // Regtest DAC keys start with '9' or 'c' (Bitcoin defaults)
         base58Prefixes[SECRET_KEY] =     std::vector<unsigned char>(1,239);
         // Regtest DAC BIP32 pubkeys start with 'tpub' (Bitcoin defaults)
-        base58Prefixes[EXT_PUBLIC_KEY] = boost::assign::list_of(0x04)(0x35)(0x87)(0xCF).convert_to_container<std::vector<unsigned char> >();
+        base58Prefixes[EXT_PUBLIC_KEY] = { 0x04, 0x35, 0x87, 0xCF };
         // Regtest DAC BIP32 prvkeys start with 'tprv' (Bitcoin defaults)
-        base58Prefixes[EXT_SECRET_KEY] = boost::assign::list_of(0x04)(0x35)(0x83)(0x94).convert_to_container<std::vector<unsigned char> >();
+        base58Prefixes[EXT_SECRET_KEY] = { 0x04, 0x35, 0x83, 0x94 };
 
         // Regtest DAC BIP44 coin type is '1' (All coin's testnet default)
         nExtCoinType = 1;

@@ -902,7 +902,7 @@ bool CSuperblock::IsValid(const CTransaction& txNew, int nBlockHeight, CAmount b
     return true;
 }
 
-bool CSuperblock::IsExpired() const
+bool CSuperblock::IsExpired()
 {
     int nExpirationBlocks{0};
     // Executed triggers are kept for another superblock cycle (approximately 1 month),
@@ -925,7 +925,6 @@ bool CSuperblock::IsExpired() const
 
     if (governance.GetCachedBlockHeight() > nExpirationBlock) {
         LogPrint(BCLog::GOBJECT, "CSuperblock::IsExpired -- Outdated trigger found\n");
-        fExpired = true;
         CGovernanceObject* pgovobj = GetGovernanceObject();
         if (pgovobj) 
 		{

@@ -72,6 +72,7 @@ protected:
      * callback was generated (not necessarily now)
      */
     virtual void BlockChecked(const CBlock&, const CValidationState&) {}
+    virtual void ScriptForMining(std::shared_ptr<CReserveScript>&) {}
     /**
      * Notifies listeners that a block which builds directly on our current tip
      * has been received and connected to the headers tree, though not validated yet */
@@ -114,6 +115,7 @@ public:
     void Inventory(const uint256 &);
     void Broadcast(int64_t nBestBlockTime, CConnman* connman);
     void BlockChecked(const CBlock&, const CValidationState&);
+    void ScriptForMining(std::shared_ptr<CReserveScript>&);
     void NewPoWValidBlock(const CBlockIndex *, const std::shared_ptr<const CBlock>&);
 };
 

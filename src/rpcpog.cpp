@@ -473,7 +473,9 @@ std::string CreateBankrollDenominations(double nQuantity, CAmount denominationAm
 	bool fUseInstantSend = false;
 	double minCoinAge = 0;
 	std::string sOptData;
-    if (!pwalletMain->CreateTransaction(vecSend, wtx, reservekey, nFeeRequired, nChangePosRet, sError, NULL, true, ONLY_NONDENOMINATED, fUseInstantSend, 0, sOptData)) 
+    CCoinControl coinControl;
+    coinControl.nCoinType = CoinType::ALL_COINS;
+    if (!pwalletMain->CreateTransaction(vecSend, wtx, reservekey, nFeeRequired, nChangePosRet, sError, coinControl, true, 0, sOptData))
 	{
 		if (!sError.empty())
 		{
@@ -487,7 +489,7 @@ std::string CreateBankrollDenominations(double nQuantity, CAmount denominationAm
 		}
     }
 	CValidationState state;
-    if (!pwalletMain->CommitTransaction(wtx, reservekey, g_connman.get(), state, fUseInstantSend ? NetMsgType::TXLOCKREQUEST : NetMsgType::TX))
+    if (!pwalletMain->CommitTransaction(wtx, reservekey, g_connman.get(), state))
     {
 		sError = "Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.";
 		return std::string();
@@ -639,9 +641,10 @@ bool FundWithExternalPurse(std::string& sError, const CTxDestination &address, C
     int nMinConfirms = 0;
 
 	// We must pass minCoinAge == .01+, and nExactSpend == purses vout to use this feature:
-	
-    if (!pwalletMain->CreateTransaction(vecSend, wtxNew, reservekey, nFeeRequired, nChangePosRet, strError, NULL, true, ONLY_NONDENOMINATED, fUseInstantSend, 0, 
-		sOptionalData, dMinCoinAge, 0, nExactAmount, sPursePubKey))
+    CCoinControl coinControl;
+    coinControl.nCoinType = CoinType::ALL_COINS;
+    if (!pwalletMain->CreateTransaction(vecSend, wtxNew, reservekey, nFeeRequired, nChangePosRet, strError, coinControl, true, 0,
+		sOptionalData, sPursePubKey))
 	{
         if (!fSubtractFeeFromAmount && nValue + nFeeRequired > pwalletMain->GetBalance())
 		{
@@ -653,7 +656,7 @@ bool FundWithExternalPurse(std::string& sError, const CTxDestination &address, C
     }
     CValidationState state;
         
-    if (!pwalletMain->CommitTransaction(wtxNew, reservekey, g_connman.get(), state,  fUseInstantSend ? NetMsgType::TXLOCKREQUEST : NetMsgType::TX))
+    if (!pwalletMain->CommitTransaction(wtxNew, reservekey, g_connman.get(), state))
 	{
         sError = "Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.";
 		return false;
@@ -698,7 +701,8 @@ bool RPCSendMoney(std::string& sError, const CTxDestination &address, CAmount nV
 	vecSend.push_back(recipient);
 	
     int nMinConfirms = 0;
-    if (!pwalletMain->CreateTransaction(vecSend, wtxNew, reservekey, nFeeRequired, nChangePosRet, strError, NULL, true, ONLY_NONDENOMINATED, fUseInstantSend, 0, sOptionalData)) 
+    CCoinControl coinControl;
+    if (!pwalletMain->CreateTransaction(vecSend, wtxNew, reservekey, nFeeRequired, nChangePosRet, strError, coinControl, true, 0, sOptionalData))
 	{
         if (!fSubtractFeeFromAmount && nValue + nFeeRequired > pwalletMain->GetBalance())
 		{
@@ -710,7 +714,7 @@ bool RPCSendMoney(std::string& sError, const CTxDestination &address, CAmount nV
     }
     CValidationState state;
         
-    if (!pwalletMain->CommitTransaction(wtxNew, reservekey, g_connman.get(), state,  fUseInstantSend ? NetMsgType::TXLOCKREQUEST : NetMsgType::TX))
+    if (!pwalletMain->CommitTransaction(wtxNew, reservekey, g_connman.get(), state))
 	{
         sError = "Error: The transaction was rejected! This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.";
 		return false;
@@ -907,7 +911,7 @@ bool VoteManyForGobject(std::string govobj, std::string strVoteSignal, std::stri
 std::string CreateGovernanceCollateral(uint256 GovObjHash, CAmount caFee, std::string& sError)
 {
 	CWalletTx wtx;
-	if(!pwalletMain->GetBudgetSystemCollateralTX(wtx, GovObjHash, caFee, false)) 
+	if(!pwalletMain->GetBudgetSystemCollateralTX(wtx, GovObjHash, caFee)) 
 	{
 		sError = "Error creating collateral transaction for governance object.  Please check your wallet balance and make sure your wallet is unlocked.";
 		return std::string();
@@ -917,7 +921,7 @@ std::string CreateGovernanceCollateral(uint256 GovObjHash, CAmount caFee, std::s
 		// -- make our change address
 		CReserveKey reservekey(pwalletMain);
 		CValidationState state;
-        pwalletMain->CommitTransaction(wtx, reservekey, g_connman.get(), state, NetMsgType::TX);
+        pwalletMain->CommitTransaction(wtx, reservekey, g_connman.get(), state);
 		DBG( cout << "gobject: prepare "
 					<< " strData = " << govobj.GetDataAsString()
 					<< ", hash = " << govobj.GetHash().GetHex()
@@ -1028,7 +1032,7 @@ int64_t GetFileSize(std::string sPath)
 
 bool CheckNonce(bool f9000, unsigned int nNonce, int nPrevHeight, int64_t nPrevBlockTime, int64_t nBlockTime, const Consensus::Params& params)
 {
-	if (!f9000 || nPrevHeight > params.EVOLUTION_CUTOVER_HEIGHT && nPrevHeight <= params.ANTI_GPU_HEIGHT) 
+	if (!f9000 || (nPrevHeight > params.EVOLUTION_CUTOVER_HEIGHT && nPrevHeight <= params.ANTI_GPU_HEIGHT) )
 		return true;
 
 	if (nPrevHeight >= params.RANDOMX_HEIGHT)
@@ -2312,7 +2316,7 @@ bool WriteKey(std::string sKey, std::string sValue)
     FILE *outFile = fopen(pathConfigFile.string().c_str(), "w");
     fputs(sConfig.c_str(), outFile);
     fclose(outFile);
-    ReadConfigFile(pathConfigFile.string().c_str());
+    gArgs.ReadConfigFile(pathConfigFile.string().c_str());
     return true;
 }
 
@@ -2617,8 +2621,8 @@ CWalletTx CreateAntiBotNetTx(CBlockIndex* pindexLast, double nMinCoinAge, CReser
 		CAmount nFeeRequired = 0;
 
 		std::string sPubPurseKey = GetEPArg(true);
-
-		fCreated = pwalletMain->CreateTransaction(vecSend, wtx, reservekey, nFeeRequired, nChangePosRet, strError, NULL, true, ALL_COINS, false, 0, sXML, nMinCoinAge, nAllocated, .01, sPubPurseKey);
+        CCoinControl coinControl;
+		fCreated = pwalletMain->CreateTransaction(vecSend, wtx, reservekey, nFeeRequired, nChangePosRet, strError, coinControl, true, 0, sXML, sPubPurseKey);
 
 		double nTest = GetAntiBotNetWeight(chainActive.Tip()->GetBlockTime(), wtx.tx, true, "");
 		sDebugInfo = "TargetWeight=" + RoundToString(nTargetABNWeight, 0) + ", UsingCoins=" + RoundToString((double)nUsed/COIN, 2) 

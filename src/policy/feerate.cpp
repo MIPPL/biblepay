@@ -6,6 +6,8 @@
 #include "feerate.h"
 #include "tinyformat.h"
 
+const std::string CURRENCY_UNIT = "DAC";
+
 CFeeRate::CFeeRate(const CAmount& nFeePaid, size_t nBytes_)
 {
     assert(nBytes_ <= uint64_t(std::numeric_limits<int64_t>::max()));
@@ -36,5 +38,5 @@ CAmount CFeeRate::GetFee(size_t nBytes_) const
 
 std::string CFeeRate::ToString() const
 {
-    return strprintf("%d.%08d %s/kB", nSatoshisPerK / COIN, nSatoshisPerK % COIN, CURRENCY_NAME);
+    return strprintf("%d.%08d %s/kB", nSatoshisPerK / COIN, nSatoshisPerK % COIN, CURRENCY_UNIT);
 }

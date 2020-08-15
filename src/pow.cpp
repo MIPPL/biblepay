@@ -238,43 +238,25 @@ unsigned int GetNextWorkRequiredBTC(const CBlockIndex* pindexLast, const CBlockH
 
 unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader *pblock, const Consensus::Params& params)
 {
-    assert(pindexLast != nullptr);
-    assert(pblock != nullptr);
-
     // DAC only uses DGW
-	return DarkGravityWave(pindexLast, pblock, params);
-   
+    return DarkGravityWave(pindexLast, pblock, params);
+    
     // this is only active on devnets
     if (pindexLast->nHeight < params.nMinimumDifficultyBlocks) {
-        return bnPowLimit.GetCompact();
+        unsigned int nProofOfWorkLimit = UintToArith256(params.powLimit).GetCompact();
+        return nProofOfWorkLimit;
     }
-
-    if (pindexLast->nHeight + 1 < params.nPowKGWHeight) {
-        return GetNextWorkRequiredBTC(pindexLast, pblock, params);
+    
+    // Most recent algo first
+    if (pindexLast->nHeight + 1 >= params.nPowDGWHeight) {
+        return DarkGravityWave(pindexLast, pblock, params);
     }
-
-    // Note: GetNextWorkRequiredBTC has it's own special difficulty rule,
-    // so we only apply this to post-BTC algos.
-    if (params.fPowAllowMinDifficultyBlocks) {
-        // recent block is more than 2 hours old
-        if (pblock->GetBlockTime() > pindexLast->GetBlockTime() + 2 * 60 * 60) {
-            return bnPowLimit.GetCompact();
-        }
-        // recent block is more than 10 minutes old
-        if (pblock->GetBlockTime() > pindexLast->GetBlockTime() + params.nPowTargetSpacing * 4) {
-            arith_uint256 bnNew = arith_uint256().SetCompact(pindexLast->nBits) * 10;
-            if (bnNew > bnPowLimit) {
-                return bnPowLimit.GetCompact();
-            }
-            return bnNew.GetCompact();
-        }
-    }
-
-    if (pindexLast->nHeight + 1 < params.nPowDGWHeight) {
+    else if (pindexLast->nHeight + 1 >= params.nPowKGWHeight) {
         return KimotoGravityWell(pindexLast, params);
     }
-
-    return DarkGravityWave(pindexLast, params);
+    else {
+        return GetNextWorkRequiredBTC(pindexLast, pblock, params);
+    }
 }
 
 // for DIFF_BTC only!

@@ -275,7 +275,7 @@ enum FlushStateMode {
 // See definition for documentation
 static bool FlushStateToDisk(const CChainParams& chainParams, CValidationState &state, FlushStateMode mode, int nManualPruneHeight=0);
 static void FindFilesToPruneManual(std::set<int>& setFilesToPrune, int nManualPruneHeight);
-static void FindFilesToPrune(std::set<int>& setFilesToPrune, uint64_t nPruneAfterHeight);
+
 bool CheckInputs(const CTransaction& tx, CValidationState &state, const CCoinsViewCache &inputs, bool fScriptChecks, unsigned int flags, bool cacheSigStore, bool cacheFullScriptStore, PrecomputedTransactionData& txdata, std::vector<CScriptCheck> *pvChecks = nullptr);
 static FILE* OpenUndoFile(const CDiskBlockPos &pos, bool fReadOnly = false);
 
@@ -1000,7 +1000,7 @@ bool GetTransaction(const uint256 &hash, CTransactionRef &txOut, const Consensus
 // CBlock and CBlockIndex
 //
 
-static bool WriteBlockToDisk(const CBlock& block, CDiskBlockPos& pos, const CMessageHeader::MessageStartChars& messageStart)
+bool WriteBlockToDisk(const CBlock& block, CDiskBlockPos& pos, const CMessageHeader::MessageStartChars& messageStart)
 {
     // Open history file to append
     CAutoFile fileout(OpenBlockFile(pos), SER_DISK, CLIENT_VERSION);
@@ -2335,36 +2335,39 @@ static bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockInd
     }	
 
     // DAC : MODIFIED TO CHECK MASTERNODE PAYMENTS AND SUPERBLOCKS	
+    int64_t nTime5_1 = GetTimeMicros(); nTimeISFilter += nTime5_1 - nTime4;
+    LogPrint(BCLog::BENCHMARK, "      - IS filter: %.2fms [%.2fs]\n", 0.001 * (nTime5_1 - nTime4), nTimeISFilter * 0.000001);
 
     // TODO: resync data (both ways?) and try to reprocess this block later.
-    CAmount blockReward = nFees + GetBlockSubsidy(pindex->pprev->nBits, pindex->pprev->nHeight, chainparams.GetConsensus(), false);
-    std::string strError;
-	
+    CAmount blockReward = nFees + GetBlockSubsidy(pindex->pprev->nBits, pindex->pprev->nHeight, chainparams.GetConsensus());
+    std::string strError = "";
+    
+    int64_t nTime5_2 = GetTimeMicros(); nTimeSubsidy += nTime5_2 - nTime5_1;
+    LogPrint(BCLog::BENCHMARK, "      - GetBlockSubsidy: %.2fms [%.2fs]\n", 0.001 * (nTime5_2 - nTime5_1), nTimeSubsidy * 0.000001);
+    
     if (!IsBlockValueValid(block, pindex->nHeight, blockReward, strError)) {
-        return state.DoS(0, error("ConnectBlock::ERROR::BLOCKVALUEVALID:: %s", strError), REJECT_INVALID, "bad-cb-amount");
+        return state.DoS(0, error("ConnectBlock(DASH): %s", strError), REJECT_INVALID, "bad-cb-amount");
     }
-	
-	// Since we still live in the hybrid scenario (.13 + .14):
-	if (GetSporkDouble("SPORK_8_MASTERNODE_PAYMENT_ENFORCEMENT", 0) == 1) 
-	{
-		if (!IsBlockPayeeValid(*block.vtx[0], pindex->nHeight, blockReward)) {
-			mapRejectedBlocks.insert(std::make_pair(block.GetHash(), GetTime()));
-			return state.DoS(0, error("ConnectBlock::ERROR::Couldn't find masternode or superblock payments"),
-									REJECT_INVALID, "bad-cb-payee");
-		}
-	}
-
+    
+    int64_t nTime5_3 = GetTimeMicros(); nTimeValueValid += nTime5_3 - nTime5_2;
+    LogPrint(BCLog::BENCHMARK, "      - IsBlockValueValid: %.2fms [%.2fs]\n", 0.001 * (nTime5_3 - nTime5_2), nTimeValueValid * 0.000001);
+    
+    if (!IsBlockPayeeValid(*block.vtx[0], pindex->nHeight, blockReward)) {
+        return state.DoS(0, error("ConnectBlock(DASH): couldn't find masternode or superblock payments"),
+                         REJECT_INVALID, "bad-cb-payee");
+    }
+    
     int64_t nTime5_4 = GetTimeMicros(); nTimePayeeValid += nTime5_4 - nTime5_3;
     LogPrint(BCLog::BENCHMARK, "      - IsBlockPayeeValid: %.2fms [%.2fs]\n", 0.001 * (nTime5_4 - nTime5_3), nTimePayeeValid * 0.000001);
-
+    
     if (!ProcessSpecialTxsInBlock(block, pindex, state, fJustCheck, fScriptChecks)) {
         return error("ConnectBlock(DASH): ProcessSpecialTxsInBlock for block %s failed with %s",
                      pindex->GetBlockHash().ToString(), FormatStateMessage(state));
     }
-
+    
     int64_t nTime5_5 = GetTimeMicros(); nTimeProcessSpecial += nTime5_5 - nTime5_4;
     LogPrint(BCLog::BENCHMARK, "      - ProcessSpecialTxsInBlock: %.2fms [%.2fs]\n", 0.001 * (nTime5_5 - nTime5_4), nTimeProcessSpecial * 0.000001);
-
+    
     int64_t nTime5 = GetTimeMicros(); nTimeDashSpecific += nTime5 - nTime4;
     LogPrint(BCLog::BENCHMARK, "    - Dash specific: %.2fms [%.2fs]\n", 0.001 * (nTime5 - nTime4), nTimeDashSpecific * 0.000001);
 
@@ -2416,11 +2419,6 @@ static bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockInd
 
     // add this block to the view's block chain
     view.SetBestBlock(pindex->GetBlockHash());
-
-    // Watch for changes to the previous coinbase transaction.
-    static uint256 hashPrevBestCoinBase;
-    GetMainSignals().UpdatedTransaction(hashPrevBestCoinBase);
-    hashPrevBestCoinBase = block.vtx[0]->GetHash();
 
     int64_t nTime6 = GetTimeMicros(); nTimeIndex += nTime6 - nTime5;
     LogPrint(BCLog::BENCHMARK, "    - Index writing: %.2fms [%.2fs]\n", 0.001 * (nTime6 - nTime5), nTimeIndex * 0.000001);
@@ -3419,7 +3417,7 @@ static bool FindUndoPos(CValidationState &state, int nFile, CDiskBlockPos &pos, 
     return true;
 }
 
-static bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state, const Consensus::Params& consensusParams, bool fCheckPOW = true)
+bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state, const Consensus::Params& consensusParams, bool fCheckPOW, int64_t nBlockTime, int64_t nPrevBlockTime, int nPrevHeight, const CBlockIndex* pindexPrev)
 {
     // Check proof of work matches claimed amount
 	// R ANDREWS - DAC needs these 6 additional fields
@@ -4123,7 +4121,7 @@ void PruneBlockFilesManual(int nManualPruneHeight)
  *
  * @param[out]   setFilesToPrune   The set of file indices that can be unlinked will be returned
  */
-static void FindFilesToPrune(std::set<int>& setFilesToPrune, uint64_t nPruneAfterHeight)
+void FindFilesToPrune(std::set<int>& setFilesToPrune, uint64_t nPruneAfterHeight)
 {
     LOCK2(cs_main, cs_LastBlockFile);
     if (chainActive.Tip() == nullptr || nPruneTarget == 0) {

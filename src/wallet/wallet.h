@@ -39,6 +39,7 @@
 
 typedef CWallet* CWalletRef;
 extern std::vector<CWalletRef> vpwallets;
+extern CWallet* pwalletMain;
 
 /**
  * Settings
@@ -1047,6 +1048,7 @@ public:
     CAmount GetWatchOnlyBalance() const;
     CAmount GetUnconfirmedWatchOnlyBalance() const;
     CAmount GetImmatureWatchOnlyBalance() const;
+    CAmount GetAccountBalance(const std::string& strAccount, int nMinDepth, const isminefilter& filter, bool fAddLocked);
     CAmount GetLegacyBalance(const isminefilter& filter, int minDepth, const std::string* account, const bool fAddLocked) const;
 
     CAmount GetAnonymizableBalance(bool fSkipDenominated = false, bool fSkipUnconfirmed = true) const;
@@ -1076,7 +1078,9 @@ public:
      */
     bool CreateTransaction(const std::vector<CRecipient>& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, int& nChangePosInOut, std::string& strFailReason, const CCoinControl& coin_control, bool sign = true, int nExtraPayloadSize = 0,
         // DAC Params
-        std::string sOptionalPrayerData = "", double dMinCoinAge = 0, CAmount nMinSpend = 0, CAmount nExactSpend = 0, std::string sPursePubKey = ""
+                std::string sOptionalPrayerData = ""
+                //, double dMinCoinAge = 0, CAmount nMinSpend = 0, CAmount nExactSpend = 0
+                , std::string sPursePubKey = ""
         );
     bool CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey, CConnman* connman, CValidationState& state);
 
@@ -1162,7 +1166,7 @@ public:
         }
     }
 
-    void GetScriptForMining(std::shared_ptr<CReserveScript> &script);
+    void ScriptForMining(std::shared_ptr<CReserveScript> &script);
     
     unsigned int GetKeyPoolSize()
     {
